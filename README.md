@@ -19,11 +19,24 @@ Die Applikation stellt folgendes zur Verfügung:
 $ npm install
 ```
 
-## Start
+## Development
 
 ```shell
-$ npm run serve
+$ npm run dev
 ```
+
+Starts the TypeScript application with automatic restarts when files in `src/`
+change. `npm run serve` remains available as an alias for the starter project.
+
+## Build and production start
+
+```shell
+$ npm run build
+$ npm start
+```
+
+`npm run build` compiles the TypeScript source into `dist/`. `npm start` runs the
+compiled application.
 
 ## Tests
 
@@ -31,3 +44,12 @@ $ npm run serve
 $ npm run test
 ```
 
+Runs the Jest tests written in TypeScript.
+
+## Source structure
+
+Application code lives in `src/`:
+
+* `src/app.ts` creates and configures the Express application.
+* `src/server.ts` starts the HTTP server.
+* `src/library.ts` contains the existing starter utility.

@@ -2,10 +2,13 @@
   "name": "m324-projektarbeit",
   "version": "0.0.2",
   "description": "ICT Modul M324 - DevOps-Prozesse - Webapp-Projektarbeit",
-  "main": "server.js",
+  "main": "dist/src/server.js",
   "scripts": {
-    "serve": "nodemon server.js",
-    "test": "jest tests/"
+    "dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",
+    "serve": "npm run dev",
+    "build": "tsc",
+    "start": "node dist/src/server.js",
+    "test": "jest"
   },
   "author": "",
   "license": "ISC",
@@ -15,7 +18,13 @@
     "sqlite3": "^6.0.1"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/nunjucks": "^3.2.6",
     "jest": "^30.4.2",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "ts-jest": "^29.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.0"
   }
 }
