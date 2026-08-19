@@ -35,8 +35,9 @@ $ npm run build
 $ npm start
 ```
 
-`npm run build` compiles the TypeScript source into `dist/`. `npm start` runs the
-compiled application.
+`npm run build` compiles the TypeScript application source into `dist/src/`.
+Test files are compiled separately by Jest and are not included in the production
+output. `npm start` runs `dist/src/server.js` without using `ts-node`.
 
 ## Tests
 
