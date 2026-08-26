@@ -60,6 +60,17 @@ $ npm run test
 
 Runs the Jest tests written in TypeScript.
 
+## Linting
+
+```shell
+$ npm run lint
+```
+
+Runs ESLint for both the backend and the frontend. The backend config checks all
+TypeScript files, and the frontend config checks all TypeScript and Vue files.
+You can lint a single workspace with `npm run lint:backend` or
+`npm run lint:frontend`.
+
 ## Source structure
 
 The Express TypeScript application lives in `backend/`:

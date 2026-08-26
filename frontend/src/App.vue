@@ -26,16 +26,30 @@ onMounted(async () => {
 
 <template>
   <main class="page-shell">
-    <section class="hero" aria-labelledby="page-title">
-      <p class="eyebrow">Gemeinsam einkaufen</p>
-      <h1 id="page-title">Poschtilischte</h1>
+    <section
+      class="hero"
+      aria-labelledby="page-title"
+    >
+      <p class="eyebrow">
+        Gemeinsam einkaufen
+      </p>
+      <h1 id="page-title">
+        Poschtilischte
+      </h1>
       <p class="intro">
         Einkaufslisten gemeinsam planen, Produkte abhaken und nichts mehr
         vergessen.
       </p>
 
-      <div class="status" :class="`status--${connectionState}`" role="status">
-        <span class="status__dot" aria-hidden="true"></span>
+      <div
+        class="status"
+        :class="`status--${connectionState}`"
+        role="status"
+      >
+        <span
+          class="status__dot"
+          aria-hidden="true"
+        />
         <span v-if="connectionState === 'checking'">Backend wird geprüft …</span>
         <span v-else-if="connectionState === 'connected'">Backend verbunden</span>
         <span v-else>Backend nicht erreichbar</span>
