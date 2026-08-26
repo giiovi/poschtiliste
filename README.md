@@ -6,12 +6,12 @@ Diese [ ExpressJS ](https://expressjs.com)-Applikation dient als Starter-Projekt
 
 Die Applikation stellt folgendes zur Verfügung:
 
-* eine NodeJS-Applikation mit dem [ExpressJS](https://expressjs.com) Framework
-* eine einfache, kleine Mini-Applikation mit 2 URL-Routen:
-  * '/': die Index-Route
-  * '/json-demo': Eine Route, die JSON-Daten liefert
-* eine Demo-SQLite-Datenbank (die Demo-Datenbank [chinook](https://www.sqlitetutorial.net/sqlite-sample-database/))
-* ein Demo, wie die Demo-SQLite-Datenbank mit ExpressJS und SQLite konnektiert und ausgelesen werden kann
+- eine NodeJS-Applikation mit dem [ExpressJS](https://expressjs.com) Framework
+- eine einfache, kleine Mini-Applikation mit 2 URL-Routen:
+  - '/': die Index-Route
+  - '/json-demo': Eine Route, die JSON-Daten liefert
+- eine Demo-SQLite-Datenbank (die Demo-Datenbank [chinook](https://www.sqlitetutorial.net/sqlite-sample-database/))
+- ein Demo, wie die Demo-SQLite-Datenbank mit ExpressJS und SQLite konnektiert und ausgelesen werden kann
 
 ## Setup
 
@@ -71,18 +71,31 @@ TypeScript files, and the frontend config checks all TypeScript and Vue files.
 You can lint a single workspace with `npm run lint:backend` or
 `npm run lint:frontend`.
 
+## Formatting
+
+```shell
+$ npm run format
+```
+
+Formats the whole project with Prettier. To check whether all files are
+formatted without changing them, use:
+
+```shell
+$ npm run format:check
+```
+
 ## Source structure
 
 The Express TypeScript application lives in `backend/`:
 
-* `backend/src/app.ts` creates and configures the Express application.
-* `backend/src/server.ts` starts the HTTP server.
-* `backend/src/library.ts` contains the existing starter utility.
-* `backend/tests/` contains the Jest tests.
-* `backend/chinook.db` is the starter SQLite database.
+- `backend/src/app.ts` creates and configures the Express application.
+- `backend/src/server.ts` starts the HTTP server.
+- `backend/src/library.ts` contains the existing starter utility.
+- `backend/tests/` contains the Jest tests.
+- `backend/chinook.db` is the starter SQLite database.
 
 The Vue 3 TypeScript application lives in `frontend/`:
 
-* `frontend/src/App.vue` contains the starter page and backend status display.
-* `frontend/src/main.ts` initializes Vue.
-* `frontend/vite.config.ts` configures Vite and the development API proxy.
+- `frontend/src/App.vue` contains the starter page and backend status display.
+- `frontend/src/main.ts` initializes Vue.
+- `frontend/vite.config.ts` configures Vite and the development API proxy.
