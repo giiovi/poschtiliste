@@ -19,6 +19,10 @@ export function createApp(): Express {
   app.set("view engine", "njk");
   app.set("views", "./views");
 
+  app.get("/api/health", (_request, response) => {
+    response.json({ status: "ok" });
+  });
+
   app.get("/", (_request, response) => {
     database.all(
       "SELECT * FROM artists WHERE Name LIKE ? ORDER BY Random()",
