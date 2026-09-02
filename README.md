@@ -97,11 +97,28 @@ $ npm run format:check
 
 The Express TypeScript application lives in `backend/`:
 
-- `backend/src/app.ts` creates and configures the Express application.
-- `backend/src/server.ts` starts the HTTP server.
+- `backend/src/app.ts` creates the Express application and connects its components.
+- `backend/src/routes/` defines HTTP endpoints and delegates work to services.
+- `backend/src/services/` contains business logic and database-independent rules.
+- `backend/src/middleware/` contains shared Express request and error handling.
+- `backend/src/db/` provides database access. SQL queries are used by services rather
+  than route handlers.
+- `backend/src/types/` contains shared TypeScript domain types.
+- `backend/src/server.ts` starts the configured HTTP server.
 - `backend/src/library.ts` contains the existing starter utility.
 - `backend/tests/` contains the Jest tests.
 - `backend/chinook.db` is the starter SQLite database.
+
+The backend request flow is intentionally simple:
+
+```text
+HTTP request -> route -> service -> database
+```
+
+Routes are responsible only for HTTP concerns such as reading a request and sending
+a response. Validation and business decisions belong in services, while reusable
+request/error handling belongs in middleware. New backend features should follow
+this separation so that their business logic can be unit-tested without Express.
 
 The Vue 3 TypeScript application lives in `frontend/`:
 

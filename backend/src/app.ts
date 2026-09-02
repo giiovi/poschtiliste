@@ -1,14 +1,16 @@
 import express, { type Express } from "express";
 import nunjucks from "nunjucks";
-import sqlite3 from "sqlite3";
+
+import { createDatabase } from "./db/database";
+import { errorHandler } from "./middleware/error-handler";
+import { createDemoRouter } from "./routes/demo-routes";
+import { createHealthRouter } from "./routes/health-routes";
+import { createArtistService } from "./services/artist-service";
 
 export function createApp(): Express {
   const app = express();
-  const database = new sqlite3.Database("./chinook.db");
-
-  database.on("trace", (sql: string) => {
-    console.log(`DEBUG SQL: ${sql}`);
-  });
+  const database = createDatabase();
+  const artistService = createArtistService(database);
 
   nunjucks.configure("views", {
     express: app,
@@ -18,33 +20,11 @@ export function createApp(): Express {
 
   app.set("view engine", "njk");
   app.set("views", "./views");
+  app.use(express.json());
 
-  app.get("/api/health", (_request, response) => {
-    response.json({ status: "ok" });
-  });
-
-  app.get("/", (_request, response) => {
-    database.all(
-      "SELECT * FROM artists WHERE Name LIKE ? ORDER BY Random()",
-      ["A%"],
-      (error, rows) => {
-        response.render("hello.html", {
-          today: new Date(),
-          err: error,
-          rows,
-        });
-      },
-    );
-  });
-
-  app.get("/json-demo", (_request, response) => {
-    database.all("SELECT * FROM artists LIMIT 10", (_error, rows) => {
-      response.json({
-        today: new Date(),
-        rows,
-      });
-    });
-  });
+  app.use("/api/health", createHealthRouter());
+  app.use(createDemoRouter(artistService));
+  app.use(errorHandler);
 
   return app;
 }
