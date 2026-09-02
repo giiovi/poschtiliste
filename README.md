@@ -31,6 +31,34 @@ $ cp .env.example .env
 `.env.example` documents all environment variables with safe placeholder
 values. Never commit a real `.env` file; it is listed in `.gitignore`.
 
+The development and test databases use separate environment variables:
+
+| Environment | Knex client            | Database file            |
+| ----------- | ---------------------- | ------------------------ |
+| Development | `DATABASE_CLIENT`      | `DATABASE_FILENAME`      |
+| Test        | `TEST_DATABASE_CLIENT` | `TEST_DATABASE_FILENAME` |
+
+No database connection parameter is hardcoded in the Knex configuration. Copy
+`.env.example` to `.env` before running database commands locally.
+
+## Database migrations
+
+Apply all pending migrations to the development database:
+
+```shell
+$ npm run db:migrate
+```
+
+Apply the same migrations to the isolated test database:
+
+```shell
+$ npm run db:migrate -- --env test
+```
+
+Both commands use `backend/knexfile.ts`. Migration source files live in
+`backend/src/db/migrations/`; database files are created in `backend/data/` and
+are not committed.
+
 ## Development
 
 ```shell

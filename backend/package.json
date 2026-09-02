@@ -8,10 +8,13 @@
     "build": "tsc",
     "start": "node dist/src/server.js",
     "test": "jest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:migrate": "knex migrate:latest --knexfile knexfile.ts"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "knex": "^3.3.0",
     "nunjucks": "^3.2.4",
     "sqlite3": "^6.0.1"
   },

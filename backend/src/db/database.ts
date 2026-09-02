@@ -1,30 +1,26 @@
-import sqlite3 from "sqlite3";
+import knex, { type Knex } from "knex";
+
+import { createKnexConfig } from "./knex-config";
 
 export interface Database {
   all<T>(sql: string, parameters?: unknown[]): Promise<T[]>;
 }
 
 export function createDatabase(
-  filename = process.env.DATABASE_FILE ?? "./chinook.db",
+  environment: NodeJS.ProcessEnv = process.env,
 ): Database {
-  const connection = new sqlite3.Database(filename);
-
-  connection.on("trace", (sql: string) => {
-    console.log(`DEBUG SQL: ${sql}`);
-  });
+  const databaseEnvironment =
+    environment.NODE_ENV === "test" ? "test" : "development";
+  const connection = knex(createKnexConfig(environment)[databaseEnvironment]);
 
   return {
-    all<T>(sql: string, parameters: unknown[] = []): Promise<T[]> {
-      return new Promise((resolve, reject) => {
-        connection.all(sql, parameters, (error, rows: T[]) => {
-          if (error) {
-            reject(error);
-            return;
-          }
+    async all<T>(sql: string, parameters: unknown[] = []): Promise<T[]> {
+      const rows: unknown = await connection.raw(
+        sql,
+        parameters as Knex.RawBinding[],
+      );
 
-          resolve(rows);
-        });
-      });
+      return rows as T[];
     },
   };
 }

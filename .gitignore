@@ -7,4 +7,5 @@ MASTER_PROJECT_CONTEXT.md
 .env
 .env.*
 !.env.example
+/backend/data/*.sqlite
 .idea/

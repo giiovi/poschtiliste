@@ -1,5 +1,17 @@
+import path from "node:path";
+
+import dotenv from "dotenv";
+
 import { createApp } from "./app";
 import { encodeHTML } from "./library";
+
+dotenv.config({
+  path: [
+    path.resolve(process.cwd(), ".env"),
+    path.resolve(process.cwd(), "../.env"),
+  ],
+  quiet: true,
+});
 
 const port = Number(process.env.PORT ?? 3000);
 const app = createApp();
