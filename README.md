@@ -22,6 +22,15 @@ $ npm install
 The repository uses npm workspaces. This command installs both backend and
 frontend dependencies.
 
+## Environment configuration
+
+```shell
+$ cp .env.example .env
+```
+
+`.env.example` documents all environment variables with safe placeholder
+values. Never commit a real `.env` file; it is listed in `.gitignore`.
+
 ## Development
 
 ```shell

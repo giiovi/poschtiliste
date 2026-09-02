@@ -4,3 +4,7 @@
 AGENTS.md
 CLAUDE.md
 MASTER_PROJECT_CONTEXT.md
+.env
+.env.*
+!.env.example
+.idea/
