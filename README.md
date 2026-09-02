@@ -55,9 +55,18 @@ Apply the same migrations to the isolated test database:
 $ npm run db:migrate -- --env test
 ```
 
+Roll back all migrations in the selected database:
+
+```shell
+$ npm run db:rollback
+$ npm run db:rollback -- --env test
+```
+
 Both commands use `backend/knexfile.ts`. Migration source files live in
 `backend/src/db/migrations/`; database files are created in `backend/data/` and
-are not committed.
+are not committed. The initial schema contains `users`, `shopping_lists`,
+`shopping_items`, and `list_assignments`. Passwords have no plaintext column;
+only bcrypt values are accepted in `users.password_hash`.
 
 ## Development
 
