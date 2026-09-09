@@ -62,5 +62,17 @@ export function createShoppingListRouter(
   router.patch("/:id", updateList);
   router.put("/:id", updateList);
 
+  router.delete(
+    "/:id",
+    asyncHandler(async (request, response) => {
+      await shoppingListService.remove(
+        parseListId(request.params.id as string),
+        request.currentUser as PublicUser,
+      );
+
+      response.status(204).end();
+    }),
+  );
+
   return router;
 }
