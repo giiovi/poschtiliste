@@ -25,6 +25,7 @@ export interface ShoppingListService {
     update: ShoppingListUpdate,
     user: PublicUser,
   ): Promise<ShoppingList>;
+  remove(id: number, user: PublicUser): Promise<void>;
 }
 
 interface ShoppingListRow extends Omit<ShoppingList, "completed"> {
@@ -57,6 +58,32 @@ async function assertUsersExist(
     throw new ValidationError(
       `Unknown user id(s): ${missingIds.sort((a, b) => a - b).join(", ")}`,
     );
+  }
+}
+
+async function assertAccess(
+  transaction: Knex.Transaction,
+  id: number,
+  user: PublicUser,
+): Promise<void> {
+  const row: ShoppingListRow | undefined = await transaction("shopping_lists")
+    .where("id", id)
+    .first();
+
+  if (!row) {
+    throw new NotFoundError("Shopping list not found");
+  }
+
+  if (user.role === "admin" || row.responsible_user_id === user.id) {
+    return;
+  }
+
+  const assignment = await transaction("list_assignments")
+    .where({ shopping_list_id: id, user_id: user.id })
+    .first();
+
+  if (!assignment) {
+    throw new ForbiddenError("No access to this shopping list");
   }
 }
 
@@ -125,23 +152,7 @@ export function createShoppingListService(
       user: PublicUser,
     ): Promise<ShoppingList> {
       return database.connection.transaction(async (transaction) => {
-        const [row]: ShoppingListRow[] = await transaction("shopping_lists")
-          .select("*")
-          .where("id", id);
-
-        if (!row) {
-          throw new NotFoundError("Shopping list not found");
-        }
-
-        if (user.role !== "admin" && row.responsible_user_id !== user.id) {
-          const assignment = await transaction("list_assignments")
-            .where({ shopping_list_id: id, user_id: user.id })
-            .first();
-
-          if (!assignment) {
-            throw new ForbiddenError("No access to this shopping list");
-          }
-        }
+        await assertAccess(transaction, id, user);
 
         if (update.responsibleUserId !== undefined) {
           await assertUsersExist(transaction, [update.responsibleUserId]);
@@ -166,6 +177,19 @@ export function createShoppingListService(
           .where("id", id);
 
         return toShoppingList(updated);
+      });
+    },
+
+    async remove(id: number, user: PublicUser): Promise<void> {
+      await database.connection.transaction(async (transaction) => {
+        await assertAccess(transaction, id, user);
+        await transaction("shopping_items")
+          .where("shopping_list_id", id)
+          .delete();
+        await transaction("list_assignments")
+          .where("shopping_list_id", id)
+          .delete();
+        await transaction("shopping_lists").where("id", id).delete();
       });
     },
   };
