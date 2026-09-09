@@ -92,6 +92,18 @@ Test logins (development only, never use them in production):
 
 The seed creates three example shopping lists with items and user assignments.
 
+## API
+
+Sessions are cookie based (`express-session`). The cookie is signed with
+`SESSION_SECRET` from `.env`; the backend refuses to start without it. Routes
+marked as protected require an authenticated session and answer `401`
+otherwise.
+
+| Method | Route         | Protected | Description                                                                   |
+| ------ | ------------- | --------- | ----------------------------------------------------------------------------- |
+| `GET`  | `/api/health` | no        | Health check                                                                  |
+| `GET`  | `/api/lists`  | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists |
+
 ## Development
 
 ```shell
