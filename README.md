@@ -99,13 +99,15 @@ Sessions are cookie based (`express-session`). The cookie is signed with
 marked as protected require an authenticated session and answer `401`
 otherwise.
 
-| Method        | Route            | Protected | Description                                                                                         |
-| ------------- | ---------------- | --------- | --------------------------------------------------------------------------------------------------- |
-| `GET`         | `/api/health`    | no        | Health check                                                                                        |
-| `GET`         | `/api/lists`     | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists                       |
-| `POST`        | `/api/lists`     | yes       | Create a shopping list with optional assignments, returns `201`                                     |
-| `PATCH`/`PUT` | `/api/lists/:id` | yes       | Update title, due date, responsible user or `completed`; `403` without access, `404` if unknown     |
-| `DELETE`      | `/api/lists/:id` | yes       | Delete a list with its items and assignments, returns `204`; `403` without access, `404` if unknown |
+| Method        | Route                                | Protected | Description                                                                                                 |
+| ------------- | ------------------------------------ | --------- | ----------------------------------------------------------------------------------------------------------- |
+| `GET`         | `/api/health`                        | no        | Health check                                                                                                |
+| `GET`         | `/api/lists`                         | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists                               |
+| `POST`        | `/api/lists`                         | yes       | Create a shopping list with optional assignments, returns `201`                                             |
+| `PATCH`/`PUT` | `/api/lists/:id`                     | yes       | Update title, due date, responsible user or `completed`; `403` without access, `404` if unknown             |
+| `DELETE`      | `/api/lists/:id`                     | yes       | Delete a list with its items and assignments, returns `204`; `403` without access, `404` if unknown         |
+| `POST`        | `/api/lists/:id/assignments`         | yes       | Assign a user (`{ "userId": number }`), returns `201` with all assigned user ids; `409` if already assigned |
+| `DELETE`      | `/api/lists/:id/assignments/:userId` | yes       | Remove an assignment, returns `204`; `404` if not assigned                                                  |
 
 Body of `POST /api/lists` (JSON):
 
