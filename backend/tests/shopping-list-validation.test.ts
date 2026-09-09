@@ -1,5 +1,8 @@
-import { ValidationError } from "../src/errors/validation-error";
-import { validateShoppingListInput } from "../src/validation/shopping-list-validation";
+import { ValidationError } from "../src/errors/http-error";
+import {
+  validateShoppingListInput,
+  validateShoppingListUpdate,
+} from "../src/validation/shopping-list-validation";
 
 const currentUserId = 7;
 
@@ -68,6 +71,32 @@ describe("validateShoppingListInput", () => {
     ],
   ])("rejects %j with %s", (body, message) => {
     expect(() => validateShoppingListInput(body, currentUserId)).toThrow(
+      new ValidationError(message),
+    );
+  });
+});
+
+describe("validateShoppingListUpdate", () => {
+  test("accepts partial updates", () => {
+    expect(
+      validateShoppingListUpdate({ title: " Neu ", completed: true }),
+    ).toEqual({ title: "Neu", completed: true });
+    expect(validateShoppingListUpdate({ dueDate: null })).toEqual({
+      dueDate: null,
+    });
+  });
+
+  test.each([
+    [{}, "At least one field must be provided"],
+    [{ completed: "yes" }, "Completed must be a boolean"],
+    [{ title: "" }, "Title is required"],
+    [{ dueDate: "bad" }, "Due date must have the format YYYY-MM-DD"],
+    [
+      { responsibleUserId: 1.5 },
+      "Responsible user id must be a positive integer",
+    ],
+  ])("rejects %j with %s", (body, message) => {
+    expect(() => validateShoppingListUpdate(body)).toThrow(
       new ValidationError(message),
     );
   });

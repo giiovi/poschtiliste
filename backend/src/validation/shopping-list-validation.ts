@@ -1,10 +1,17 @@
-import { ValidationError } from "../errors/validation-error";
+import { ValidationError } from "../errors/http-error";
 
 export interface ShoppingListInput {
   title: string;
   dueDate: string | null;
   responsibleUserId: number;
   assignedUserIds: number[];
+}
+
+export interface ShoppingListUpdate {
+  title?: string;
+  dueDate?: string | null;
+  responsibleUserId?: number;
+  completed?: boolean;
 }
 
 const MAX_TITLE_LENGTH = 255;
@@ -96,7 +103,6 @@ function validateAssignedUserIds(value: unknown): number[] {
   return assignedUserIds;
 }
 
-// validates the request body shape. existence of referenced users is checked by the service
 export function validateShoppingListInput(
   body: unknown,
   currentUserId: number,
@@ -114,4 +120,44 @@ export function validateShoppingListInput(
     ),
     assignedUserIds: validateAssignedUserIds(body.assignedUserIds),
   };
+}
+
+export function validateShoppingListUpdate(body: unknown): ShoppingListUpdate {
+  if (!isRecord(body)) {
+    throw new ValidationError("Request body must be a JSON object");
+  }
+
+  const update: ShoppingListUpdate = {};
+
+  if (body.title !== undefined) {
+    update.title = validateTitle(body.title);
+  }
+
+  if (body.dueDate !== undefined) {
+    update.dueDate = validateDueDate(body.dueDate);
+  }
+
+  if (body.responsibleUserId !== undefined) {
+    if (!isPositiveInteger(body.responsibleUserId)) {
+      throw new ValidationError(
+        "Responsible user id must be a positive integer",
+      );
+    }
+
+    update.responsibleUserId = body.responsibleUserId;
+  }
+
+  if (body.completed !== undefined) {
+    if (typeof body.completed !== "boolean") {
+      throw new ValidationError("Completed must be a boolean");
+    }
+
+    update.completed = body.completed;
+  }
+
+  if (Object.keys(update).length === 0) {
+    throw new ValidationError("At least one field must be provided");
+  }
+
+  return update;
 }
