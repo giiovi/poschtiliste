@@ -68,6 +68,30 @@ are not committed. The initial schema contains `users`, `shopping_lists`,
 `shopping_items`, and `list_assignments`. Passwords have no plaintext column;
 only bcrypt values are accepted in `users.password_hash`.
 
+## Development seed data
+
+Fill the development database with reproducible test data:
+
+```shell
+$ npm run db:seed
+$ npm run db:seed -- --env test
+```
+
+The seed lives in `backend/src/db/seeds/` and requires the migrations to be
+applied first. It can be run any number of times: users are upserted by
+username, and the example lists of the seed users are replaced together with
+their items and assignments. Passwords are stored as bcrypt hashes.
+
+Test logins (development only, never use them in production):
+
+| Username | Password    | Role  |
+| -------- | ----------- | ----- |
+| `admin`  | `admin1234` | admin |
+| `alice`  | `alice1234` | user  |
+| `bob`    | `bob12345`  | user  |
+
+The seed creates three example shopping lists with items and user assignments.
+
 ## Development
 
 ```shell
