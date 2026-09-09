@@ -1,6 +1,6 @@
 import type { ErrorRequestHandler } from "express";
 
-import { ValidationError } from "../errors/validation-error";
+import { HttpError } from "../errors/http-error";
 
 export const errorHandler: ErrorRequestHandler = (
   error: unknown,
@@ -11,7 +11,7 @@ export const errorHandler: ErrorRequestHandler = (
   // Express identifies error middleware by its four-argument signature.
   void _next;
 
-  if (error instanceof ValidationError) {
+  if (error instanceof HttpError) {
     response.status(error.status).json({ error: error.message });
     return;
   }
