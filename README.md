@@ -103,6 +103,19 @@ otherwise.
 | ------ | ------------- | --------- | ----------------------------------------------------------------------------- |
 | `GET`  | `/api/health` | no        | Health check                                                                  |
 | `GET`  | `/api/lists`  | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists |
+| `POST` | `/api/lists`  | yes       | Create a shopping list with optional assignments, returns `201`               |
+
+Body of `POST /api/lists` (JSON):
+
+| Field               | Type       | Rules                                                    |
+| ------------------- | ---------- | -------------------------------------------------------- |
+| `title`             | `string`   | required, 1 to 255 characters                            |
+| `dueDate`           | `string`   | optional, `YYYY-MM-DD`                                   |
+| `responsibleUserId` | `number`   | optional, existing user id, defaults to the current user |
+| `assignedUserIds`   | `number[]` | optional, existing user ids                              |
+
+Invalid input is rejected with `400` and `{ "error": "<message>" }`. The list
+and its assignments are written in a single transaction.
 
 ## Development
 
