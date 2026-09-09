@@ -1,10 +1,17 @@
 import type { Knex } from "knex";
 
 import type { Database } from "../db/database";
-import { ValidationError } from "../errors/validation-error";
+import {
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from "../errors/http-error";
 import type { ShoppingList } from "../types/shopping-list";
 import type { PublicUser } from "../types/user";
-import type { ShoppingListInput } from "../validation/shopping-list-validation";
+import type {
+  ShoppingListInput,
+  ShoppingListUpdate,
+} from "../validation/shopping-list-validation";
 
 export interface ShoppingListWithAssignments extends ShoppingList {
   assigned_user_ids: number[];
@@ -13,6 +20,11 @@ export interface ShoppingListWithAssignments extends ShoppingList {
 export interface ShoppingListService {
   listForUser(user: PublicUser): Promise<ShoppingList[]>;
   create(input: ShoppingListInput): Promise<ShoppingListWithAssignments>;
+  update(
+    id: number,
+    update: ShoppingListUpdate,
+    user: PublicUser,
+  ): Promise<ShoppingList>;
 }
 
 interface ShoppingListRow extends Omit<ShoppingList, "completed"> {
@@ -104,6 +116,56 @@ export function createShoppingListService(
           ...toShoppingList(row),
           assigned_user_ids: input.assignedUserIds,
         };
+      });
+    },
+
+    async update(
+      id: number,
+      update: ShoppingListUpdate,
+      user: PublicUser,
+    ): Promise<ShoppingList> {
+      return database.connection.transaction(async (transaction) => {
+        const [row]: ShoppingListRow[] = await transaction("shopping_lists")
+          .select("*")
+          .where("id", id);
+
+        if (!row) {
+          throw new NotFoundError("Shopping list not found");
+        }
+
+        if (user.role !== "admin" && row.responsible_user_id !== user.id) {
+          const assignment = await transaction("list_assignments")
+            .where({ shopping_list_id: id, user_id: user.id })
+            .first();
+
+          if (!assignment) {
+            throw new ForbiddenError("No access to this shopping list");
+          }
+        }
+
+        if (update.responsibleUserId !== undefined) {
+          await assertUsersExist(transaction, [update.responsibleUserId]);
+        }
+
+        await transaction("shopping_lists")
+          .where("id", id)
+          .update({
+            ...(update.title !== undefined && { title: update.title }),
+            ...(update.dueDate !== undefined && { due_date: update.dueDate }),
+            ...(update.responsibleUserId !== undefined && {
+              responsible_user_id: update.responsibleUserId,
+            }),
+            ...(update.completed !== undefined && {
+              completed: update.completed,
+            }),
+            updated_at: transaction.fn.now(),
+          });
+
+        const [updated]: ShoppingListRow[] = await transaction("shopping_lists")
+          .select("*")
+          .where("id", id);
+
+        return toShoppingList(updated);
       });
     },
   };

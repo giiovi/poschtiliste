@@ -3,7 +3,21 @@ import { Router, type RequestHandler } from "express";
 import { asyncHandler } from "../middleware/async-handler";
 import type { ShoppingListService } from "../services/shopping-list-service";
 import type { PublicUser } from "../types/user";
-import { validateShoppingListInput } from "../validation/shopping-list-validation";
+import { ValidationError } from "../errors/http-error";
+import {
+  validateShoppingListInput,
+  validateShoppingListUpdate,
+} from "../validation/shopping-list-validation";
+
+function parseListId(value: string): number {
+  const id = Number(value);
+
+  if (!Number.isInteger(id) || id < 1) {
+    throw new ValidationError("List id must be a positive integer");
+  }
+
+  return id;
+}
 
 export function createShoppingListRouter(
   shoppingListService: ShoppingListService,
@@ -34,6 +48,19 @@ export function createShoppingListRouter(
       response.status(201).json(list);
     }),
   );
+
+  const updateList = asyncHandler(async (request, response) => {
+    const list = await shoppingListService.update(
+      parseListId(request.params.id as string),
+      validateShoppingListUpdate(request.body),
+      request.currentUser as PublicUser,
+    );
+
+    response.json(list);
+  });
+
+  router.patch("/:id", updateList);
+  router.put("/:id", updateList);
 
   return router;
 }

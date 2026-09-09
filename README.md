@@ -99,11 +99,12 @@ Sessions are cookie based (`express-session`). The cookie is signed with
 marked as protected require an authenticated session and answer `401`
 otherwise.
 
-| Method | Route         | Protected | Description                                                                   |
-| ------ | ------------- | --------- | ----------------------------------------------------------------------------- |
-| `GET`  | `/api/health` | no        | Health check                                                                  |
-| `GET`  | `/api/lists`  | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists |
-| `POST` | `/api/lists`  | yes       | Create a shopping list with optional assignments, returns `201`               |
+| Method        | Route            | Protected | Description                                                                                     |
+| ------------- | ---------------- | --------- | ----------------------------------------------------------------------------------------------- |
+| `GET`         | `/api/health`    | no        | Health check                                                                                    |
+| `GET`         | `/api/lists`     | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists                   |
+| `POST`        | `/api/lists`     | yes       | Create a shopping list with optional assignments, returns `201`                                 |
+| `PATCH`/`PUT` | `/api/lists/:id` | yes       | Update title, due date, responsible user or `completed`; `403` without access, `404` if unknown |
 
 Body of `POST /api/lists` (JSON):
 
