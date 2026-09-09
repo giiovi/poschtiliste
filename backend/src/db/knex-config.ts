@@ -33,6 +33,10 @@ function sqliteConfiguration(
       directory: path.resolve(__dirname, "migrations"),
       loadExtensions: [".ts"],
     },
+    seeds: {
+      directory: path.resolve(__dirname, "seeds"),
+      loadExtensions: [".ts"],
+    },
   };
 }
 

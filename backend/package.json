@@ -10,9 +10,11 @@
     "test": "jest",
     "lint": "eslint .",
     "db:migrate": "knex migrate:latest --knexfile knexfile.ts",
-    "db:rollback": "knex migrate:rollback --all --knexfile knexfile.ts"
+    "db:rollback": "knex migrate:rollback --all --knexfile knexfile.ts",
+    "db:seed": "knex seed:run --knexfile knexfile.ts"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "knex": "^3.3.0",
