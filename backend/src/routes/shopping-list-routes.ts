@@ -3,6 +3,7 @@ import { Router, type RequestHandler } from "express";
 import { asyncHandler } from "../middleware/async-handler";
 import type { ShoppingListService } from "../services/shopping-list-service";
 import type { PublicUser } from "../types/user";
+import { validateShoppingListInput } from "../validation/shopping-list-validation";
 
 export function createShoppingListRouter(
   shoppingListService: ShoppingListService,
@@ -20,6 +21,17 @@ export function createShoppingListRouter(
       );
 
       response.json(lists);
+    }),
+  );
+
+  router.post(
+    "/",
+    asyncHandler(async (request, response) => {
+      const currentUser = request.currentUser as PublicUser;
+      const input = validateShoppingListInput(request.body, currentUser.id);
+      const list = await shoppingListService.create(input);
+
+      response.status(201).json(list);
     }),
   );
 
