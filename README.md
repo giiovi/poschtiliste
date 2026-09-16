@@ -96,10 +96,13 @@ Sessions are cookie based (`express-session`). The cookie is signed with
 marked as protected require an authenticated session and answer `401`
 otherwise.
 
-| Method | Route         | Protected | Description                                                                   |
-| ------ | ------------- | --------- | ----------------------------------------------------------------------------- |
-| `GET`  | `/api/health` | no        | Health check                                                                  |
-| `GET`  | `/api/lists`  | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists |
+| Method | Route              | Protected | Description                                                                   |
+| ------ | ------------------ | --------- | ----------------------------------------------------------------------------- |
+| `GET`  | `/api/health`      | no        | Health check                                                                  |
+| `POST` | `/api/auth/login`  | no        | Login and create a session                                                    |
+| `POST` | `/api/auth/logout` | no        | Destroy the session and clear its cookie                                      |
+| `GET`  | `/api/auth/me`     | yes       | Return the current user without the password hash                             |
+| `GET`  | `/api/lists`       | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists |
 
 ## Development
 
@@ -126,6 +129,9 @@ Valid credentials return the public user fields and set a signed, HTTP-only
 session cookie. Invalid credentials always return `401 Unauthorized` with the
 same error response, regardless of whether the username or password was wrong.
 Passwords are compared against `users.password_hash` exclusively with bcrypt.
+`GET /api/auth/me` returns the currently authenticated user and responds with
+`401 Unauthorized` when no valid session exists. `POST /api/auth/logout`
+destroys the server-side session and removes the session cookie.
 
 ## Build and production start
 

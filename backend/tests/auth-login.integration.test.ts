@@ -12,7 +12,7 @@ import { SESSION_COOKIE_NAME } from "../src/session";
 
 const migrationsDirectory = path.resolve(__dirname, "../src/db/migrations");
 
-describe("POST /api/auth/login", () => {
+describe("auth routes", () => {
   let connection: Knex;
   let databaseDirectory: string;
   let database: Database;
@@ -56,7 +56,7 @@ describe("POST /api/auth/login", () => {
     await rm(databaseDirectory, { recursive: true, force: true });
   });
 
-  test("creates a session and returns the public user for valid credentials", async () => {
+  test("login creates a session and returns the public user", async () => {
     const app = createApp({
       database,
       environment: { NODE_ENV: "test", SESSION_SECRET: "test-secret" },
@@ -92,7 +92,7 @@ describe("POST /api/auth/login", () => {
     ["unknown user", "nobody", "correct-password"],
     ["wrong password", "alice", "wrong-password"],
   ])(
-    "returns the same 401 response for %s",
+    "login returns the same 401 response for %s",
     async (_case, username, password) => {
       const app = createApp({
         database,
@@ -113,5 +113,74 @@ describe("POST /api/auth/login", () => {
     expect(() =>
       createApp({ database, environment: { NODE_ENV: "test" } }),
     ).toThrow("Missing required environment variable: SESSION_SECRET");
+  });
+
+  test("GET /me returns the current public user", async () => {
+    const app = createApp({
+      database,
+      environment: { NODE_ENV: "test", SESSION_SECRET: "test-secret" },
+    });
+    const agent = request.agent(app);
+
+    await agent.post("/api/auth/login").send({
+      username: "alice",
+      password: "correct-password",
+    });
+    const response = await agent.get("/api/auth/me");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      user: {
+        id: expect.any(Number),
+        username: "alice",
+        role: "user",
+        created_at: expect.any(String),
+        updated_at: expect.any(String),
+      },
+    });
+    expect(response.body.user).not.toHaveProperty("passwordHash");
+    expect(response.body.user).not.toHaveProperty("password_hash");
+  });
+
+  test("GET /me returns 401 without an authenticated session", async () => {
+    const app = createApp({
+      database,
+      environment: { NODE_ENV: "test", SESSION_SECRET: "test-secret" },
+    });
+
+    const response = await request(app).get("/api/auth/me");
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: "Authentication required" });
+  });
+
+  test("POST /logout destroys the session and clears the cookie", async () => {
+    const app = createApp({
+      database,
+      environment: { NODE_ENV: "test", SESSION_SECRET: "test-secret" },
+    });
+    const agent = request.agent(app);
+    const loginResponse = await agent.post("/api/auth/login").send({
+      username: "alice",
+      password: "correct-password",
+    });
+    const sessionCookie = loginResponse.headers["set-cookie"]?.[0];
+
+    expect(sessionCookie).toBeDefined();
+
+    const logoutResponse = await agent.post("/api/auth/logout");
+
+    expect(logoutResponse.status).toBe(204);
+    expect(logoutResponse.headers["set-cookie"]?.[0]).toContain(
+      `${SESSION_COOKIE_NAME}=;`,
+    );
+
+    const meResponse = await agent.get("/api/auth/me");
+    expect(meResponse.status).toBe(401);
+
+    const reusedCookieResponse = await request(app)
+      .get("/api/auth/me")
+      .set("Cookie", sessionCookie as string);
+    expect(reusedCookieResponse.status).toBe(401);
   });
 });

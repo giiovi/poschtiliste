@@ -28,7 +28,7 @@ export function createApp(options: CreateAppOptions = {}): Express {
   app.use(createSessionMiddleware(environment));
 
   app.use("/api/health", createHealthRouter());
-  app.use("/api/auth", createAuthRouter(authService));
+  app.use("/api/auth", createAuthRouter(authService, requireAuth));
   app.use(
     "/api/lists",
     createShoppingListRouter(shoppingListService, requireAuth),
