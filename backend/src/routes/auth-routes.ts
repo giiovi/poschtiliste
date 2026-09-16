@@ -1,7 +1,8 @@
-import { Router, type Request } from "express";
+import { Router, type Request, type RequestHandler } from "express";
 
 import { asyncHandler } from "../middleware/async-handler";
 import type { AuthService } from "../services/auth-service";
+import { SESSION_COOKIE_NAME } from "../session";
 
 interface LoginBody {
   username: string;
@@ -35,7 +36,23 @@ async function regenerateSession(request: Request): Promise<void> {
   });
 }
 
-export function createAuthRouter(authService: AuthService): Router {
+async function destroySession(request: Request): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    request.session.destroy((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
+export function createAuthRouter(
+  authService: AuthService,
+  requireAuth: RequestHandler,
+): Router {
   const router = Router();
 
   router.post(
@@ -63,6 +80,19 @@ export function createAuthRouter(authService: AuthService): Router {
       response.status(200).json({ user });
     }),
   );
+
+  router.post(
+    "/logout",
+    asyncHandler(async (request, response) => {
+      await destroySession(request);
+      response.clearCookie(SESSION_COOKIE_NAME);
+      response.status(204).end();
+    }),
+  );
+
+  router.get("/me", requireAuth, (request, response) => {
+    response.status(200).json({ user: request.currentUser });
+  });
 
   return router;
 }
