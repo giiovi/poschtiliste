@@ -2,6 +2,7 @@ import type { Knex } from "knex";
 
 import type { Database } from "../db/database";
 import {
+  ConflictError,
   ForbiddenError,
   NotFoundError,
   ValidationError,
@@ -26,6 +27,12 @@ export interface ShoppingListService {
     user: PublicUser,
   ): Promise<ShoppingList>;
   remove(id: number, user: PublicUser): Promise<void>;
+  addAssignment(
+    id: number,
+    userId: number,
+    user: PublicUser,
+  ): Promise<number[]>;
+  removeAssignment(id: number, userId: number, user: PublicUser): Promise<void>;
 }
 
 interface ShoppingListRow extends Omit<ShoppingList, "completed"> {
@@ -190,6 +197,57 @@ export function createShoppingListService(
           .where("shopping_list_id", id)
           .delete();
         await transaction("shopping_lists").where("id", id).delete();
+      });
+    },
+
+    async addAssignment(
+      id: number,
+      userId: number,
+      user: PublicUser,
+    ): Promise<number[]> {
+      return database.connection.transaction(async (transaction) => {
+        await assertAccess(transaction, id, user);
+        await assertUsersExist(transaction, [userId]);
+
+        const existing = await transaction("list_assignments")
+          .where({ shopping_list_id: id, user_id: userId })
+          .first();
+
+        if (existing) {
+          throw new ConflictError("User is already assigned to this list");
+        }
+
+        await transaction("list_assignments").insert({
+          shopping_list_id: id,
+          user_id: userId,
+        });
+
+        const rows: { user_id: number }[] = await transaction(
+          "list_assignments",
+        )
+          .select("user_id")
+          .where("shopping_list_id", id)
+          .orderBy("user_id");
+
+        return rows.map((row) => row.user_id);
+      });
+    },
+
+    async removeAssignment(
+      id: number,
+      userId: number,
+      user: PublicUser,
+    ): Promise<void> {
+      await database.connection.transaction(async (transaction) => {
+        await assertAccess(transaction, id, user);
+
+        const deleted = await transaction("list_assignments")
+          .where({ shopping_list_id: id, user_id: userId })
+          .delete();
+
+        if (deleted === 0) {
+          throw new NotFoundError("Assignment not found");
+        }
       });
     },
   };

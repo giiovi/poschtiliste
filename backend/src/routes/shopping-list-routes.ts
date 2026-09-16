@@ -9,14 +9,18 @@ import {
   validateShoppingListUpdate,
 } from "../validation/shopping-list-validation";
 
-function parseListId(value: string): number {
+function parseId(value: unknown, name: string): number {
   const id = Number(value);
 
   if (!Number.isInteger(id) || id < 1) {
-    throw new ValidationError("List id must be a positive integer");
+    throw new ValidationError(`${name} must be a positive integer`);
   }
 
   return id;
+}
+
+function parseListId(value: string): number {
+  return parseId(value, "List id");
 }
 
 export function createShoppingListRouter(
@@ -67,6 +71,32 @@ export function createShoppingListRouter(
     asyncHandler(async (request, response) => {
       await shoppingListService.remove(
         parseListId(request.params.id as string),
+        request.currentUser as PublicUser,
+      );
+
+      response.status(204).end();
+    }),
+  );
+
+  router.post(
+    "/:id/assignments",
+    asyncHandler(async (request, response) => {
+      const assignedUserIds = await shoppingListService.addAssignment(
+        parseListId(request.params.id as string),
+        parseId(request.body?.userId, "User id"),
+        request.currentUser as PublicUser,
+      );
+
+      response.status(201).json({ assigned_user_ids: assignedUserIds });
+    }),
+  );
+
+  router.delete(
+    "/:id/assignments/:userId",
+    asyncHandler(async (request, response) => {
+      await shoppingListService.removeAssignment(
+        parseListId(request.params.id as string),
+        parseId(request.params.userId, "User id"),
         request.currentUser as PublicUser,
       );
 
