@@ -119,6 +119,26 @@ $ npm run dev:frontend
 The frontend is available at `http://localhost:5173`. During development, Vite
 forwards `/api` requests to the backend at `http://localhost:3000`.
 
+## Shopping-list dashboard
+
+The start page renders the shopping-list dashboard. It loads `GET /api/lists`
+and therefore shows exactly the lists the backend returns for the current
+session: assigned or responsible lists for a normal user, all lists for an
+admin.
+
+The dashboard distinguishes four states:
+
+- **Loading** – placeholder cards are shown while the request is running.
+- **Unauthenticated** – a `401` response is rendered as a notice asking the
+  visitor to log in.
+- **Error** – any other failure shows a notice with a retry button.
+- **Ready** – lists are grouped into `Offen` and `Abgeschlossen`, each group
+  sorted by due date, lists without a due date last.
+
+Every card carries a status chip: `Offen`, `Überfällig` (due date in the past
+and not completed) or `Abgeschlossen`. The layout is fluid and usable down to a
+viewport width of 320px.
+
 ## Login API
 
 `POST /api/auth/login` accepts a JSON body containing `username` and `password`.
@@ -205,6 +225,9 @@ The Express TypeScript application lives in `backend/`:
 
 The Vue 3 TypeScript application lives in `frontend/`:
 
-- `frontend/src/App.vue` contains the starter page and backend status display.
+- `frontend/src/App.vue` contains the application shell with the app bar.
+- `frontend/src/components/` contains the dashboard and the list card component.
+- `frontend/src/api/` contains the typed fetch helpers for the backend routes.
+- `frontend/src/types/` mirrors the API types of the backend.
 - `frontend/src/main.ts` initializes Vue.
 - `frontend/vite.config.ts` configures Vite and the development API proxy.
