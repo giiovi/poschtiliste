@@ -4,14 +4,9 @@ Autor: [Alexander Schenkel](mailto:alexander.schenkel@bztf.ch), [BZT Frauenfeld]
 
 Diese [ ExpressJS ](https://expressjs.com)-Applikation dient als Starter-Projekt für das ICT-Modul 324, DevOps-Prozesse anwenden.
 
-Die Applikation stellt folgendes zur Verfügung:
-
-- eine NodeJS-Applikation mit dem [ExpressJS](https://expressjs.com) Framework
-- eine einfache, kleine Mini-Applikation mit 2 URL-Routen:
-  - '/': die Index-Route
-  - '/json-demo': Eine Route, die JSON-Daten liefert
-- eine Demo-SQLite-Datenbank (die Demo-Datenbank [chinook](https://www.sqlitetutorial.net/sqlite-sample-database/))
-- ein Demo, wie die Demo-SQLite-Datenbank mit ExpressJS und SQLite konnektiert und ausgelesen werden kann
+Die Applikation verwendet ein ExpressJS-/TypeScript-Backend, ein Vue-Frontend
+und eine über Knex verwaltete SQLite-Datenbank. Die alte Chinook-Demo ist nicht
+Teil der Poschtilischte-API.
 
 ## Setup
 
@@ -30,6 +25,8 @@ $ cp .env.example .env
 
 `.env.example` documents all environment variables with safe placeholder
 values. Never commit a real `.env` file; it is listed in `.gitignore`.
+`SESSION_SECRET` is required by the backend to sign session cookies and must be
+replaced with a private, sufficiently long value in each deployed environment.
 
 The development and test databases use separate environment variables:
 
@@ -121,6 +118,14 @@ $ npm run dev:frontend
 
 The frontend is available at `http://localhost:5173`. During development, Vite
 forwards `/api` requests to the backend at `http://localhost:3000`.
+
+## Login API
+
+`POST /api/auth/login` accepts a JSON body containing `username` and `password`.
+Valid credentials return the public user fields and set a signed, HTTP-only
+session cookie. Invalid credentials always return `401 Unauthorized` with the
+same error response, regardless of whether the username or password was wrong.
+Passwords are compared against `users.password_hash` exclusively with bcrypt.
 
 ## Build and production start
 
