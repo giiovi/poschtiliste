@@ -13,19 +13,31 @@
     "dev:frontend": "npm run dev --workspace frontend",
     "serve": "npm run dev:backend",
     "build": "npm run build:backend && npm run build:frontend",
-    "build:backend": "npm run build --workspace backend",
-    "build:frontend": "npm run build --workspace frontend",
+    "build:backend": "npm --prefix backend run build",
+    "build:frontend": "npm --prefix frontend run build",
     "start": "npm run start --workspace backend",
-    "test": "npm run test --workspace backend",
+    "test": "npm --prefix backend run test",
     "lint": "npm run lint:backend && npm run lint:frontend",
-    "lint:backend": "npm run lint --workspace backend",
-    "lint:frontend": "npm run lint --workspace frontend",
+    "lint:backend": "npm --prefix backend run lint",
+    "lint:frontend": "npm --prefix frontend run lint",
     "db:migrate": "npm run db:migrate --workspace backend --",
     "db:rollback": "npm run db:rollback --workspace backend --",
     "db:seed": "npm run db:seed --workspace backend --",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run lint && npm run format:check"
+    "check": "npm run lint && npm run format:check",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "backend/**/*.ts": [
+      "eslint --no-config-lookup --config backend/eslint.config.mjs --max-warnings=0",
+      "prettier --write"
+    ],
+    "frontend/**/*.{ts,vue}": [
+      "eslint --no-config-lookup --config frontend/eslint.config.js --max-warnings=0",
+      "prettier --write"
+    ],
+    "**/*.{js,mjs,cjs,json,md,yml,yaml,css,html}": "prettier --write"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
@@ -33,6 +45,8 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-vue": "^9.32.0",
     "globals": "^15.14.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.1",
     "prettier": "^3.4.2",
     "typescript-eslint": "^8.19.0",
     "vue-eslint-parser": "^9.4.3"
