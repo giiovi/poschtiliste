@@ -103,6 +103,7 @@ otherwise.
 | `POST` | `/api/auth/logout` | no        | Destroy the session and clear its cookie                                      |
 | `GET`  | `/api/auth/me`     | yes       | Return the current user without the password hash                             |
 | `GET`  | `/api/lists`       | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists |
+| `POST` | `/api/lists`       | yes       | Create and persist a shopping list                                            |
 
 ## Development
 
@@ -172,6 +173,34 @@ $ npm run test
 ```
 
 Runs the Jest tests written in TypeScript.
+
+### Integration-test database
+
+Run the database integration tests separately with:
+
+```shell
+$ npm run test:integration
+```
+
+No manually created database or mocked database access is used for these
+tests. `backend/tests/helpers/test-app.ts` opens a real SQLite database in
+memory, restricts its connection pool to one connection and applies all Knex
+migrations before the test starts. Each test destroys that database connection
+afterwards, so test runs remain isolated and repeatable.
+
+`shopping-list-persistence.integration.test.ts` represents data sent by the
+frontend with a real HTTP `POST /api/lists` request through Supertest. The
+request passes through Express, the authentication middleware and the shopping
+list service into SQLite. The test then queries the `shopping_lists` table
+directly with Knex and verifies that the submitted title, due date and
+responsible user were actually persisted.
+
+For the file-based test database used by manual Knex commands, first copy
+`.env.example` to `.env`, then apply its migrations:
+
+```shell
+$ npm run db:migrate -- --env test
+```
 
 ## Linting
 

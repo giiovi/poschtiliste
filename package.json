@@ -17,6 +17,7 @@
     "build:frontend": "npm --prefix frontend run build",
     "start": "npm run start --workspace backend",
     "test": "npm --prefix backend run test",
+    "test:integration": "npm --prefix backend run test:integration",
     "lint": "npm run lint:backend && npm run lint:frontend",
     "lint:backend": "npm --prefix backend run lint",
     "lint:frontend": "npm --prefix frontend run lint",

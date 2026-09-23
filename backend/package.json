@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/src/server.js",
     "test": "jest",
+    "test:integration": "jest --runInBand --testPathPatterns=integration",
     "lint": "eslint .",
     "db:migrate": "knex migrate:latest --knexfile knexfile.ts",
     "db:rollback": "knex migrate:rollback --all --knexfile knexfile.ts",
