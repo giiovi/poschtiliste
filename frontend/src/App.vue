@@ -1,49 +1,49 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-
-type ConnectionState = "checking" | "connected" | "unavailable";
-
-const connectionState = ref<ConnectionState>("checking");
-
-onMounted(async () => {
-  try {
-    const response = await fetch("/api/health");
-    const data: unknown = await response.json();
-
-    connectionState.value =
-      response.ok &&
-      typeof data === "object" &&
-      data !== null &&
-      "status" in data &&
-      data.status === "ok"
-        ? "connected"
-        : "unavailable";
-  } catch {
-    connectionState.value = "unavailable";
-  }
-});
+import ShoppingListDashboard from "./components/ShoppingListDashboard.vue";
 </script>
 
 <template>
-  <main class="page-shell">
-    <section class="hero" aria-labelledby="page-title">
-      <p class="eyebrow">Gemeinsam einkaufen</p>
-      <h1 id="page-title">Poschtilischte</h1>
-      <p class="intro">
-        Einkaufslisten gemeinsam planen, Produkte abhaken und nichts mehr
-        vergessen.
-      </p>
+  <div class="app-shell">
+    <header class="app-bar">
+      <p class="label app-bar__eyebrow">Gemeinsam einkaufen</p>
+      <h1 class="app-bar__title">Poschtilischte</h1>
+    </header>
 
-      <div class="status" :class="`status--${connectionState}`" role="status">
-        <span class="status__dot" aria-hidden="true"></span>
-        <span v-if="connectionState === 'checking'"
-          >Backend wird geprüft …</span
-        >
-        <span v-else-if="connectionState === 'connected'"
-          >Backend verbunden</span
-        >
-        <span v-else>Backend nicht erreichbar</span>
-      </div>
-    </section>
-  </main>
+    <main class="app-main">
+      <ShoppingListDashboard />
+    </main>
+  </div>
 </template>
+
+<style scoped>
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-bar {
+  padding: 24px clamp(16px, 5vw, 48px);
+  border-bottom: 1px solid rgb(46 83 62 / 12%);
+  background: #fff;
+}
+
+.app-bar__eyebrow {
+  margin-bottom: 4px;
+  color: #b15c28;
+}
+
+.app-bar__title {
+  color: #173e2b;
+  font-size: clamp(1.6rem, 6vw, 2.2rem);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.app-main {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  padding: clamp(20px, 5vw, 40px) clamp(16px, 5vw, 48px) 48px;
+}
+</style>
