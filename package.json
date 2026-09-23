@@ -31,13 +31,13 @@
   "lint-staged": {
     "backend/**/*.ts": [
       "eslint --no-config-lookup --config backend/eslint.config.mjs --max-warnings=0",
-      "prettier --write"
+      "prettier --check"
     ],
     "frontend/**/*.{ts,vue}": [
       "eslint --no-config-lookup --config frontend/eslint.config.js --max-warnings=0",
-      "prettier --write"
+      "prettier --check"
     ],
-    "**/*.{js,mjs,cjs,json,md,yml,yaml,css,html}": "prettier --write"
+    "**/*.{js,mjs,cjs,json,md,yml,yaml,css,html}": "prettier --check"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

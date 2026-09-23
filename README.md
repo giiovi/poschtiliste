@@ -185,13 +185,14 @@ script. No further manual step is required after cloning the repository.
 The `.husky/pre-commit` hook runs on every commit:
 
 1. `lint-staged` checks only the staged files: ESLint runs on staged TypeScript
-   and Vue files, then Prettier formats all supported staged files.
+   and Vue files, then `prettier --check` verifies the formatting of all
+   supported staged files.
 2. `npm test` runs the Jest test suite.
 
-Files reformatted by Prettier are added back to the commit automatically. A
-commit is rejected when ESLint reports an error or a test fails; the commit is
-created only after all checks pass. ESLint runs with `--max-warnings=0`, so
-warnings block the commit as well.
+A commit is rejected when ESLint reports an error, a staged file is not
+formatted or a test fails; the commit is created only after all checks pass.
+ESLint runs with `--max-warnings=0`, so warnings block the commit as well. Run
+`npm run format` to fix formatting errors before committing again.
 
 Skip the hook only in justified exceptional cases:
 
