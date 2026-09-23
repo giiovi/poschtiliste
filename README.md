@@ -105,6 +105,18 @@ otherwise.
 | `GET`  | `/api/lists`       | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists |
 | `POST` | `/api/lists`       | yes       | Create and persist a shopping list                                            |
 
+## Frontend login flow
+
+The Vue application uses a protected dashboard route and a public `/login`
+route. On the first navigation after opening or reloading the application, the
+frontend calls `GET /api/auth/me`. An existing session opens the dashboard;
+otherwise the router redirects to the login page.
+
+Invalid credentials are displayed directly below the login heading. After a
+successful login the original protected destination is opened. The logout
+button in the app bar destroys the server-side session and returns the user to
+`/login`.
+
 ## Development
 
 ```shell
@@ -172,7 +184,18 @@ compiled separately by Jest and are not included in the production output.
 $ npm run test
 ```
 
-Runs the Jest tests written in TypeScript.
+Runs the automated backend and frontend tests written in TypeScript.
+
+The root test command runs both the backend Jest suite and the frontend Vitest
+suite. Run only one suite with:
+
+```shell
+$ npm run test:backend
+$ npm run test:frontend
+```
+
+The frontend tests cover session restoration through `/me`, login failures,
+logout, and redirects between public and protected routes.
 
 ### Integration-test database
 

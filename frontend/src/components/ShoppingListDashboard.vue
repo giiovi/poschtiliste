@@ -11,6 +11,7 @@ import ShoppingListCard from "./ShoppingListCard.vue";
 type DashboardState = "loading" | "ready" | "unauthenticated" | "error";
 
 const SKELETON_CARDS = 3;
+const emit = defineEmits<{ unauthenticated: [] }>();
 
 const state = ref<DashboardState>("loading");
 const shoppingLists = ref<ShoppingList[]>([]);
@@ -47,8 +48,13 @@ async function loadShoppingLists(): Promise<void> {
     shoppingLists.value = await fetchShoppingLists();
     state.value = "ready";
   } catch (error) {
-    state.value =
-      error instanceof UnauthenticatedError ? "unauthenticated" : "error";
+    if (error instanceof UnauthenticatedError) {
+      state.value = "unauthenticated";
+      emit("unauthenticated");
+      return;
+    }
+
+    state.value = "error";
   }
 }
 
