@@ -94,7 +94,8 @@ The seed creates three example shopping lists with items and user assignments.
 Sessions are cookie based (`express-session`). The cookie is signed with
 `SESSION_SECRET` from `.env`; the backend refuses to start without it. Routes
 marked as protected require an authenticated session and answer `401`
-otherwise.
+otherwise. Admin-only routes additionally use the role middleware and answer
+`403` when an authenticated user does not have the `admin` role.
 
 | Method | Route              | Protected | Description                                                                   |
 | ------ | ------------------ | --------- | ----------------------------------------------------------------------------- |
