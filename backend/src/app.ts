@@ -7,6 +7,7 @@ import { createAuthRouter } from "./routes/auth-routes";
 import { createHealthRouter } from "./routes/health-routes";
 import { createShoppingListRouter } from "./routes/shopping-list-routes";
 import { createAuthService } from "./services/auth-service";
+import { createShoppingItemService } from "./services/shopping-item-service";
 import { createShoppingListService } from "./services/shopping-list-service";
 import { createUserService } from "./services/user-service";
 import { createSessionMiddleware } from "./session";
@@ -23,6 +24,7 @@ export function createApp(options: CreateAppOptions = {}): Express {
   const authService = createAuthService(database);
   const userService = createUserService(database);
   const shoppingListService = createShoppingListService(database);
+  const shoppingItemService = createShoppingItemService(database);
   const requireAuth = createRequireAuth(userService);
   app.use(express.json());
   app.use(createSessionMiddleware(environment));
@@ -31,7 +33,11 @@ export function createApp(options: CreateAppOptions = {}): Express {
   app.use("/api/auth", createAuthRouter(authService, requireAuth));
   app.use(
     "/api/lists",
-    createShoppingListRouter(shoppingListService, requireAuth),
+    createShoppingListRouter(
+      shoppingListService,
+      shoppingItemService,
+      requireAuth,
+    ),
   );
   app.use(errorHandler);
 

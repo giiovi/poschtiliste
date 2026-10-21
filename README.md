@@ -96,14 +96,21 @@ Sessions are cookie based (`express-session`). The cookie is signed with
 marked as protected require an authenticated session and answer `401`
 otherwise.
 
-| Method | Route              | Protected | Description                                                                   |
-| ------ | ------------------ | --------- | ----------------------------------------------------------------------------- |
-| `GET`  | `/api/health`      | no        | Health check                                                                  |
-| `POST` | `/api/auth/login`  | no        | Login and create a session                                                    |
-| `POST` | `/api/auth/logout` | no        | Destroy the session and clear its cookie                                      |
-| `GET`  | `/api/auth/me`     | yes       | Return the current user without the password hash                             |
-| `GET`  | `/api/lists`       | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists |
-| `POST` | `/api/lists`       | yes       | Create and persist a shopping list                                            |
+| Method | Route                  | Protected | Description                                                                   |
+| ------ | ---------------------- | --------- | ----------------------------------------------------------------------------- |
+| `GET`  | `/api/health`          | no        | Health check                                                                  |
+| `POST` | `/api/auth/login`      | no        | Login and create a session                                                    |
+| `POST` | `/api/auth/logout`     | no        | Destroy the session and clear its cookie                                      |
+| `GET`  | `/api/auth/me`         | yes       | Return the current user without the password hash                             |
+| `GET`  | `/api/lists`           | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists |
+| `POST` | `/api/lists`           | yes       | Create and persist a shopping list                                            |
+| `GET`  | `/api/lists/:id/items` | yes       | Items from an accessible shopping list                                        |
+| `POST` | `/api/lists/:id/items` | yes       | Validate and create an item in an accessible shopping list                    |
+
+Shopping-item names are trimmed and must contain between 1 and 255 characters.
+Quantities must be positive integers and default to `1` when omitted. Normal
+users receive `403 Forbidden` for lists they are neither assigned to nor
+responsible for; administrators can access every list.
 
 ## Development
 
