@@ -8,6 +8,7 @@ import type { Database } from "../../src/db/database";
 import { errorHandler } from "../../src/middleware/error-handler";
 import { createRequireAuth } from "../../src/middleware/require-auth";
 import { createShoppingListRouter } from "../../src/routes/shopping-list-routes";
+import { createShoppingItemService } from "../../src/services/shopping-item-service";
 import { createShoppingListService } from "../../src/services/shopping-list-service";
 import { createUserService } from "../../src/services/user-service";
 import { createSessionMiddleware } from "../../src/session";
@@ -62,7 +63,11 @@ export async function createTestContext(): Promise<TestContext> {
 
   app.use(
     "/api/lists",
-    createShoppingListRouter(createShoppingListService(database), requireAuth),
+    createShoppingListRouter(
+      createShoppingListService(database),
+      createShoppingItemService(database),
+      requireAuth,
+    ),
   );
   app.use(errorHandler);
 
