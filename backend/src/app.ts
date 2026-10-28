@@ -6,6 +6,7 @@ import { createRequireAuth } from "./middleware/require-auth";
 import { createAuthRouter } from "./routes/auth-routes";
 import { createHealthRouter } from "./routes/health-routes";
 import { createShoppingListRouter } from "./routes/shopping-list-routes";
+import { createUserRouter } from "./routes/user-routes";
 import { createAuthService } from "./services/auth-service";
 import { createShoppingItemService } from "./services/shopping-item-service";
 import { createShoppingListService } from "./services/shopping-list-service";
@@ -39,6 +40,7 @@ export function createApp(options: CreateAppOptions = {}): Express {
       requireAuth,
     ),
   );
+  app.use("/api/users", createUserRouter(userService, requireAuth));
   app.use(errorHandler);
 
   return app;

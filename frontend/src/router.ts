@@ -28,6 +28,18 @@ export function createAppRouter(
         meta: { requiresAuth: true },
       },
       {
+        path: "/lists/new",
+        name: "list-create",
+        component: () => import("./views/ShoppingListFormView.vue"),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: "/lists/:id(\\d+)/edit",
+        name: "list-edit",
+        component: () => import("./views/ShoppingListFormView.vue"),
+        meta: { requiresAuth: true },
+      },
+      {
         path: "/login",
         name: "login",
         component: () => import("./views/LoginView.vue"),

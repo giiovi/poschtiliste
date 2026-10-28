@@ -34,6 +34,26 @@ describe("authentication route guard", () => {
     expect(router.currentRoute.value.name).toBe("dashboard");
   });
 
+  test("protects the list form and keeps the target as redirect", async () => {
+    const router = createAppRouter(createSession(null), createMemoryHistory());
+
+    await router.push("/lists/7/edit");
+
+    expect(router.currentRoute.value.name).toBe("login");
+    expect(router.currentRoute.value.query.redirect).toBe("/lists/7/edit");
+  });
+
+  test("opens the create and edit routes for authenticated users", async () => {
+    const router = createAppRouter(createSession(user), createMemoryHistory());
+
+    await router.push("/lists/new");
+    expect(router.currentRoute.value.name).toBe("list-create");
+
+    await router.push("/lists/7/edit");
+    expect(router.currentRoute.value.name).toBe("list-edit");
+    expect(router.currentRoute.value.params.id).toBe("7");
+  });
+
   test("redirects authenticated users away from the login page", async () => {
     const router = createAppRouter(createSession(user), createMemoryHistory());
 

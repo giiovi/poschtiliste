@@ -105,12 +105,14 @@ otherwise. Admin-only routes additionally use the role middleware and answer
 | `GET`         | `/api/auth/me`                       | yes       | Return the current user without the password hash                                                           |
 | `GET`         | `/api/lists`                         | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists                               |
 | `POST`        | `/api/lists`                         | yes       | Create a shopping list with optional assignments, returns `201`                                             |
+| `GET`         | `/api/lists/:id`                     | yes       | One list with `assigned_user_ids`; `403` without access, `404` if unknown                                   |
 | `PATCH`/`PUT` | `/api/lists/:id`                     | yes       | Update title, due date, responsible user or `completed`; `403` without access, `404` if unknown             |
 | `DELETE`      | `/api/lists/:id`                     | yes       | Delete a list with its items and assignments, returns `204`; `403` without access, `404` if unknown         |
 | `POST`        | `/api/lists/:id/assignments`         | yes       | Assign a user (`{ "userId": number }`), returns `201` with all assigned user ids; `409` if already assigned |
 | `DELETE`      | `/api/lists/:id/assignments/:userId` | yes       | Remove an assignment, returns `204`; `404` if not assigned                                                  |
 | `GET`         | `/api/lists/:id/items`               | yes       | Items from an accessible shopping list                                                                      |
 | `POST`        | `/api/lists/:id/items`               | yes       | Validate and create an item in an accessible shopping list                                                  |
+| `GET`         | `/api/users`                         | yes       | Selectable users (`id`, `username`) sorted by username                                                      |
 
 Body of `POST /api/lists` (JSON):
 
@@ -178,6 +180,22 @@ The dashboard distinguishes four states:
 Every card carries a status chip: `Offen`, `Überfällig` (due date in the past
 and not completed) or `Abgeschlossen`. The layout is fluid and usable down to a
 viewport width of 320px.
+
+## Create and edit shopping lists
+
+`Neue Liste` on the dashboard opens `/lists/new`, `Bearbeiten` on a card opens
+`/lists/:id/edit`. Both routes are protected and use the same form with title,
+due date, responsible user and assigned users. The users come from
+`GET /api/users`; the responsible user defaults to the current user.
+
+Saving a new list sends one `POST /api/lists`. Saving an existing list sends
+the title and due date first, so a validation error stops before anything else
+changes. Then new assignments are added, the responsible user is changed and
+removed assignments are deleted last, because the current user may lose access
+to the list with these two steps.
+
+Validation errors from the backend (`400`) are shown below the matching field,
+other errors above the form. After saving, the dashboard is opened again.
 
 ## Login API
 
@@ -309,7 +327,9 @@ The Express TypeScript application lives in `backend/`:
 The Vue 3 TypeScript application lives in `frontend/`:
 
 - `frontend/src/App.vue` contains the application shell with the app bar.
-- `frontend/src/components/` contains the dashboard and the list card component.
+- `frontend/src/components/` contains the dashboard, the list card and the list
+  form component.
+- `frontend/src/views/` contains the routed pages.
 - `frontend/src/api/` contains the typed fetch helpers for the backend routes.
 - `frontend/src/types/` mirrors the API types of the backend.
 - `frontend/src/main.ts` initializes Vue.

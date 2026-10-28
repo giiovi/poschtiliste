@@ -112,6 +112,18 @@ export function createShoppingListRouter(
     }),
   );
 
+  router.get(
+    "/:id",
+    asyncHandler(async (request, response) => {
+      const list = await shoppingListService.findForUser(
+        parseListId(request.params.id as string),
+        request.currentUser as PublicUser,
+      );
+
+      response.json(list);
+    }),
+  );
+
   const updateList = asyncHandler(async (request, response) => {
     const list = await shoppingListService.update(
       parseListId(request.params.id as string),

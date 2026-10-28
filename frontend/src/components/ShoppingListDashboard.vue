@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { RouterLink } from "vue-router";
 
 import {
   fetchShoppingLists,
@@ -67,14 +68,18 @@ onMounted(loadShoppingLists);
       <h2 id="dashboard-title" class="dashboard__title">
         Meine Einkaufslisten
       </h2>
-      <button
-        v-if="state === 'ready'"
-        type="button"
-        class="dashboard__refresh"
-        @click="loadShoppingLists"
-      >
-        Aktualisieren
-      </button>
+      <div v-if="state === 'ready'" class="dashboard__actions">
+        <button
+          type="button"
+          class="dashboard__refresh"
+          @click="loadShoppingLists"
+        >
+          Aktualisieren
+        </button>
+        <RouterLink :to="{ name: 'list-create' }" class="dashboard__create">
+          Neue Liste
+        </RouterLink>
+      </div>
     </header>
 
     <div
@@ -105,9 +110,12 @@ onMounted(loadShoppingLists);
       </button>
     </div>
 
-    <p v-else-if="isEmpty" class="dashboard__notice">
-      Dir ist noch keine Einkaufsliste zugewiesen.
-    </p>
+    <div v-else-if="isEmpty" class="dashboard__notice">
+      <p>Dir ist noch keine Einkaufsliste zugewiesen.</p>
+      <RouterLink :to="{ name: 'list-create' }" class="dashboard__create">
+        Neue Liste
+      </RouterLink>
+    </div>
 
     <template v-else>
       <section
@@ -182,6 +190,32 @@ onMounted(loadShoppingLists);
 
 .dashboard__refresh:hover {
   background: #eef3ee;
+}
+
+.dashboard__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.dashboard__create {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 20px;
+  background: #24623a;
+  color: #fff;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.dashboard__create:hover {
+  background: #194c2c;
+}
+
+.dashboard__create:focus-visible {
+  outline: 3px solid #3e9b5b;
+  outline-offset: 2px;
 }
 
 .dashboard__skeletons,
