@@ -97,23 +97,24 @@ marked as protected require an authenticated session and answer `401`
 otherwise. Admin-only routes additionally use the role middleware and answer
 `403` when an authenticated user does not have the `admin` role.
 
-| Method        | Route                                | Protected | Description                                                                                                 |
-| ------------- | ------------------------------------ | --------- | ----------------------------------------------------------------------------------------------------------- |
-| `GET`         | `/api/health`                        | no        | Health check                                                                                                |
-| `POST`        | `/api/auth/login`                    | no        | Login and create a session                                                                                  |
-| `POST`        | `/api/auth/logout`                   | no        | Destroy the session and clear its cookie                                                                    |
-| `GET`         | `/api/auth/me`                       | yes       | Return the current user without the password hash                                                           |
-| `GET`         | `/api/lists`                         | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists                               |
-| `POST`        | `/api/lists`                         | yes       | Create a shopping list with optional assignments, returns `201`                                             |
-| `GET`         | `/api/lists/:id`                     | yes       | One list with `assigned_user_ids`; `403` without access, `404` if unknown                                   |
-| `PATCH`/`PUT` | `/api/lists/:id`                     | yes       | Update title, due date, responsible user or `completed`; `403` without access, `404` if unknown             |
-| `DELETE`      | `/api/lists/:id`                     | yes       | Delete a list with its items and assignments, returns `204`; `403` without access, `404` if unknown         |
-| `POST`        | `/api/lists/:id/assignments`         | yes       | Assign a user (`{ "userId": number }`), returns `201` with all assigned user ids; `409` if already assigned |
-| `DELETE`      | `/api/lists/:id/assignments/:userId` | yes       | Remove an assignment, returns `204`; `404` if not assigned                                                  |
-| `GET`         | `/api/lists/:id/items`               | yes       | Items from an accessible shopping list                                                                      |
-| `POST`        | `/api/lists/:id/items`               | yes       | Validate and create an item in an accessible shopping list                                                  |
-| `PATCH`       | `/api/lists/:id/items/:itemId`       | yes       | Edit an item's name, quantity, or purchased status in an accessible list                                    |
-| `GET`         | `/api/users`                         | yes       | Selectable users (`id`, `username`) sorted by username                                                      |
+| Method        | Route                                | Protected | Description                                                                                                                      |
+| ------------- | ------------------------------------ | --------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`         | `/api/health`                        | no        | Health check                                                                                                                     |
+| `POST`        | `/api/auth/login`                    | no        | Login and create a session                                                                                                       |
+| `POST`        | `/api/auth/logout`                   | no        | Destroy the session and clear its cookie                                                                                         |
+| `GET`         | `/api/auth/me`                       | yes       | Return the current user without the password hash                                                                                |
+| `GET`         | `/api/lists`                         | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists                                                    |
+| `POST`        | `/api/lists`                         | yes       | Create a shopping list with optional assignments, returns `201`                                                                  |
+| `GET`         | `/api/lists/:id`                     | yes       | One list with `assigned_user_ids`; `403` without access, `404` if unknown                                                        |
+| `PATCH`/`PUT` | `/api/lists/:id`                     | yes       | Update title, due date, responsible user or `completed`; `403` without access, `404` if unknown                                  |
+| `DELETE`      | `/api/lists/:id`                     | yes       | Delete a list with its items and assignments, returns `204`; `403` without access, `404` if unknown                              |
+| `POST`        | `/api/lists/:id/assignments`         | yes       | Assign a user (`{ "userId": number }`), returns `201` with all assigned user ids; `409` if already assigned                      |
+| `DELETE`      | `/api/lists/:id/assignments/:userId` | yes       | Remove an assignment, returns `204`; `404` if not assigned                                                                       |
+| `GET`         | `/api/lists/:id/items`               | yes       | Items from an accessible shopping list                                                                                           |
+| `POST`        | `/api/lists/:id/items`               | yes       | Validate and create an item in an accessible shopping list                                                                       |
+| `PATCH`       | `/api/lists/:id/items/:itemId`       | yes       | Edit an item's name, quantity, or purchased status in an accessible list                                                         |
+| `DELETE`      | `/api/lists/:id/items/:itemId`       | yes       | Delete an item of an accessible list, returns `204`; `403` without access, `404` if the list or the item in this list is unknown |
+| `GET`         | `/api/users`                         | yes       | Selectable users (`id`, `username`) sorted by username                                                                           |
 
 Body of `POST /api/lists` (JSON):
 
