@@ -20,6 +20,10 @@ export interface ShoppingListWithAssignments extends ShoppingList {
 
 export interface ShoppingListService {
   listForUser(user: PublicUser): Promise<ShoppingList[]>;
+  findForUser(
+    id: number,
+    user: PublicUser,
+  ): Promise<ShoppingListWithAssignments>;
   create(input: ShoppingListInput): Promise<ShoppingListWithAssignments>;
   update(
     id: number,
@@ -116,6 +120,32 @@ export function createShoppingListService(
             );
 
       return rows.map(toShoppingList);
+    },
+
+    async findForUser(
+      id: number,
+      user: PublicUser,
+    ): Promise<ShoppingListWithAssignments> {
+      return database.connection.transaction(async (transaction) => {
+        await assertAccess(transaction, id, user);
+
+        const [row]: ShoppingListRow[] = await transaction("shopping_lists")
+          .select("*")
+          .where("id", id);
+        const assignments: { user_id: number }[] = await transaction(
+          "list_assignments",
+        )
+          .select("user_id")
+          .where("shopping_list_id", id)
+          .orderBy("user_id");
+
+        return {
+          ...toShoppingList(row),
+          assigned_user_ids: assignments.map(
+            (assignment) => assignment.user_id,
+          ),
+        };
+      });
     },
 
     async create(

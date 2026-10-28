@@ -17,6 +17,9 @@ function createUserService(users: PublicUser[]): UserService {
     async findById(id: number): Promise<PublicUser | null> {
       return users.find((user) => user.id === id) ?? null;
     },
+    async listOptions() {
+      return users.map(({ id, username }) => ({ id, username }));
+    },
   };
 }
 

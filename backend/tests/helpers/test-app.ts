@@ -8,6 +8,7 @@ import { wrapConnection } from "../../src/db/database";
 import { errorHandler } from "../../src/middleware/error-handler";
 import { createRequireAuth } from "../../src/middleware/require-auth";
 import { createShoppingListRouter } from "../../src/routes/shopping-list-routes";
+import { createUserRouter } from "../../src/routes/user-routes";
 import { createShoppingItemService } from "../../src/services/shopping-item-service";
 import { createShoppingListService } from "../../src/services/shopping-list-service";
 import { createUserService } from "../../src/services/user-service";
@@ -60,6 +61,7 @@ export async function createTestContext(): Promise<TestContext> {
       requireAuth,
     ),
   );
+  app.use("/api/users", createUserRouter(userService, requireAuth));
   app.use(errorHandler);
 
   return { connection, app };
