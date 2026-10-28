@@ -198,6 +198,118 @@ describe("shopping-item routes", () => {
     ).toHaveLength(0);
   });
 
+  async function deleteItemAs(
+    userId: number,
+    listId: number | string,
+    itemId: number | string,
+  ) {
+    return request(context.app)
+      .delete(`/api/lists/${listId}/items/${itemId}`)
+      .set("Cookie", await cookiesFor(userId));
+  }
+
+  async function itemIdByName(name: string): Promise<number> {
+    const item = await context
+      .connection("shopping_items")
+      .where({ name })
+      .first();
+    return item.id;
+  }
+
+  async function remainingItemNames(): Promise<string[]> {
+    const rows = await context
+      .connection("shopping_items")
+      .where({ shopping_list_id: shoppingListId })
+      .orderBy("id");
+    return rows.map((row) => row.name);
+  }
+
+  test("deletes an item of an accessible list", async () => {
+    const response = await deleteItemAs(
+      bobId,
+      shoppingListId,
+      await itemIdByName("Milk"),
+    );
+
+    expect(response.status).toBe(204);
+    expect(response.body).toEqual({});
+    expect(await remainingItemNames()).toEqual(["Bread"]);
+  });
+
+  test("allows administrators to delete items from every list", async () => {
+    const response = await deleteItemAs(
+      adminId,
+      shoppingListId,
+      await itemIdByName("Bread"),
+    );
+
+    expect(response.status).toBe(204);
+    expect(await remainingItemNames()).toEqual(["Milk"]);
+  });
+
+  test("returns 404 when the item does not exist", async () => {
+    const response = await deleteItemAs(aliceId, shoppingListId, 99999);
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: "Shopping item not found" });
+  });
+
+  test("does not delete an item through another accessible list", async () => {
+    const [otherListId] = await context.connection("shopping_lists").insert({
+      title: "Carol list",
+      responsible_user_id: carolId,
+    });
+    await context
+      .connection("shopping_items")
+      .insert({ shopping_list_id: otherListId, name: "Cheese", quantity: 1 });
+
+    const response = await deleteItemAs(
+      aliceId,
+      shoppingListId,
+      await itemIdByName("Cheese"),
+    );
+
+    expect(response.status).toBe(404);
+    expect(
+      await context.connection("shopping_items").where({ name: "Cheese" }),
+    ).toHaveLength(1);
+  });
+
+  test("returns 404 when the shopping list does not exist", async () => {
+    const response = await deleteItemAs(aliceId, 99999, 1);
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: "Shopping list not found" });
+  });
+
+  test("returns 403 and keeps the item for users without access", async () => {
+    const response = await deleteItemAs(
+      carolId,
+      shoppingListId,
+      await itemIdByName("Milk"),
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: "Shopping list access denied" });
+    expect(await remainingItemNames()).toEqual(["Milk", "Bread"]);
+  });
+
+  test("returns 401 for item deletion without a session", async () => {
+    const response = await request(context.app).delete(
+      `/api/lists/${shoppingListId}/items/${await itemIdByName("Milk")}`,
+    );
+
+    expect(response.status).toBe(401);
+    expect(await remainingItemNames()).toEqual(["Milk", "Bread"]);
+  });
+
+  test("rejects an invalid item id", async () => {
+    const response = await deleteItemAs(aliceId, shoppingListId, "abc");
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: "Invalid shopping item id" });
+  });
+
   test("rejects an invalid list id", async () => {
     const response = await request(context.app)
       .get("/api/lists/not-a-number/items")

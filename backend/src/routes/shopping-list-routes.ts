@@ -64,7 +64,7 @@ function parseCreateItemBody(value: unknown): CreateShoppingItemBody | null {
 }
 
 function sendItemResult(
-  result: ShoppingItemResult<ShoppingItem | ShoppingItem[]>,
+  result: ShoppingItemResult<ShoppingItem | ShoppingItem[] | null>,
   response: Parameters<RequestHandler>[1],
   successStatus = 200,
 ): void {
@@ -73,8 +73,18 @@ function sendItemResult(
     return;
   }
 
+  if (result.status === "item-not-found") {
+    response.status(404).json({ error: "Shopping item not found" });
+    return;
+  }
+
   if (result.status === "forbidden") {
     response.status(403).json({ error: "Shopping list access denied" });
+    return;
+  }
+
+  if (result.value === null) {
+    response.status(204).end();
     return;
   }
 
@@ -218,6 +228,32 @@ export function createShoppingListRouter(
       );
 
       sendItemResult(result, response, 201);
+    }),
+  );
+
+  router.delete(
+    "/:id/items/:itemId",
+    asyncHandler(async (request, response) => {
+      const shoppingListId = parsePositiveId(request.params.id);
+      const itemId = parsePositiveId(request.params.itemId);
+
+      if (shoppingListId === null) {
+        response.status(400).json({ error: "Invalid shopping list id" });
+        return;
+      }
+
+      if (itemId === null) {
+        response.status(400).json({ error: "Invalid shopping item id" });
+        return;
+      }
+
+      const result = await shoppingItemService.deleteForUser(
+        shoppingListId,
+        itemId,
+        request.currentUser as PublicUser,
+      );
+
+      sendItemResult(result, response);
     }),
   );
 
