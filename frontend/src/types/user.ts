@@ -5,3 +5,5 @@ export interface User {
   username: string;
   role: UserRole;
 }
+
+export type UserOption = Pick<User, "id" | "username">;

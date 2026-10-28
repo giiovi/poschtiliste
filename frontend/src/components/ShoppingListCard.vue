@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { RouterLink } from "vue-router";
 
 import type { ShoppingList } from "../types/shopping-list";
 
@@ -54,10 +55,19 @@ const formattedDueDate = computed(() => {
       <h3 class="list-card__title">{{ list.title }}</h3>
       <span class="list-card__status label">{{ status.label }}</span>
     </div>
-    <p class="list-card__due-date">
-      <span class="label list-card__due-date-label">Fällig</span>
-      {{ formattedDueDate }}
-    </p>
+    <div class="list-card__footer">
+      <p class="list-card__due-date">
+        <span class="label list-card__due-date-label">Fällig</span>
+        {{ formattedDueDate }}
+      </p>
+      <RouterLink
+        :to="{ name: 'list-edit', params: { id: list.id } }"
+        class="list-card__edit"
+        :aria-label="`${list.title} bearbeiten`"
+      >
+        Bearbeiten
+      </RouterLink>
+    </div>
   </article>
 </template>
 
@@ -108,6 +118,34 @@ const formattedDueDate = computed(() => {
   background: color-mix(in srgb, var(--list-card-accent) 16%, #fff);
   color: color-mix(in srgb, var(--list-card-accent) 78%, #000);
   white-space: nowrap;
+}
+
+.list-card__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.list-card__edit {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgb(46 83 62 / 24%);
+  color: #24623a;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.list-card__edit:hover {
+  background: #eef3ee;
+}
+
+.list-card__edit:focus-visible {
+  outline: 3px solid #3e9b5b;
+  outline-offset: 2px;
 }
 
 .list-card__due-date {
