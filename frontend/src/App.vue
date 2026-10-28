@@ -1,12 +1,26 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { RouterView, useRouter } from "vue-router";
 
 import { authSession } from "./auth/session";
+import { connectRealtime, disconnectRealtime } from "./realtime/socket";
 
 const router = useRouter();
 const loggingOut = ref(false);
 const logoutError = ref("");
+
+// one socket per logged-in user, reconnected when the user changes
+watch(
+  () => authSession.currentUser.value?.id,
+  (userId) => {
+    disconnectRealtime();
+
+    if (userId !== undefined) {
+      connectRealtime();
+    }
+  },
+  { immediate: true },
+);
 
 async function logout(): Promise<void> {
   logoutError.value = "";
