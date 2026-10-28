@@ -4,10 +4,11 @@ import express, { type Express } from "express";
 import knex, { type Knex } from "knex";
 import request from "supertest";
 
-import type { Database } from "../../src/db/database";
+import { wrapConnection } from "../../src/db/database";
 import { errorHandler } from "../../src/middleware/error-handler";
 import { createRequireAuth } from "../../src/middleware/require-auth";
 import { createShoppingListRouter } from "../../src/routes/shopping-list-routes";
+import { createUserRouter } from "../../src/routes/user-routes";
 import { createShoppingItemService } from "../../src/services/shopping-item-service";
 import { createShoppingListService } from "../../src/services/shopping-list-service";
 import { createUserService } from "../../src/services/user-service";
@@ -32,16 +33,7 @@ export async function createTestContext(): Promise<TestContext> {
   });
   await connection.migrate.latest();
 
-  const database: Database = {
-    async all<T>(sql: string, parameters: unknown[] = []): Promise<T[]> {
-      const rows: unknown = await connection.raw(
-        sql,
-        parameters as Knex.RawBinding[],
-      );
-
-      return rows as T[];
-    },
-  };
+  const database = wrapConnection(connection);
 
   const userService = createUserService(database);
   const requireAuth = createRequireAuth(userService);
@@ -69,6 +61,7 @@ export async function createTestContext(): Promise<TestContext> {
       requireAuth,
     ),
   );
+  app.use("/api/users", createUserRouter(userService, requireAuth));
   app.use(errorHandler);
 
   return { connection, app };
