@@ -54,6 +54,22 @@ describe("authentication route guard", () => {
     expect(router.currentRoute.value.params.id).toBe("7");
   });
 
+  test("opens the admin page only for administrators", async () => {
+    const userRouter = createAppRouter(
+      createSession(user),
+      createMemoryHistory(),
+    );
+    await userRouter.push("/admin/users");
+    expect(userRouter.currentRoute.value.name).toBe("dashboard");
+
+    const adminRouter = createAppRouter(
+      createSession({ ...user, role: "admin" }),
+      createMemoryHistory(),
+    );
+    await adminRouter.push("/admin/users");
+    expect(adminRouter.currentRoute.value.name).toBe("admin-users");
+  });
+
   test("redirects authenticated users away from the login page", async () => {
     const router = createAppRouter(createSession(user), createMemoryHistory());
 

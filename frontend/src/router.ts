@@ -40,6 +40,12 @@ export function createAppRouter(
         meta: { requiresAuth: true },
       },
       {
+        path: "/admin/users",
+        name: "admin-users",
+        component: () => import("./views/AdminUsersView.vue"),
+        meta: { requiresAuth: true, requiresAdmin: true },
+      },
+      {
         path: "/login",
         name: "login",
         component: () => import("./views/LoginView.vue"),
@@ -60,6 +66,10 @@ export function createAppRouter(
 
     if (to.meta.requiresAuth && !session.currentUser.value) {
       return loginRedirect(to);
+    }
+
+    if (to.meta.requiresAdmin && session.currentUser.value?.role !== "admin") {
+      return { name: "dashboard" };
     }
 
     if (to.name === "login" && session.currentUser.value) {
