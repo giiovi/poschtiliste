@@ -210,6 +210,16 @@ to the list with these two steps.
 Validation errors from the backend (`400`) are shown below the matching field,
 other errors above the form. After saving, the dashboard is opened again.
 
+## User administration
+
+Administrators see a `Benutzer` link in the app bar that opens `/admin/users`.
+The route guard sends everyone else back to the dashboard, and the link is
+hidden for them. The page lists all users and lets an administrator create,
+edit (username, role), delete and reset the password of a user, using the
+`/api/admin/users` endpoints. The own account cannot be deleted and its role
+cannot be changed. Backend errors are translated to German messages in
+`frontend/src/api/admin-users.ts`.
+
 ## Login API
 
 `POST /api/auth/login` accepts a JSON body containing `username` and `password`.
