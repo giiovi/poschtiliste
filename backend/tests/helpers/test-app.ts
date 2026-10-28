@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import express, { type Express } from "express";
+import express, { type Express, type RequestHandler } from "express";
 import knex, { type Knex } from "knex";
 import request from "supertest";
 
@@ -13,7 +13,10 @@ import { createUserRouter } from "../../src/routes/user-routes";
 import { createAdminUserService } from "../../src/services/admin-user-service";
 import { createShoppingItemService } from "../../src/services/shopping-item-service";
 import { createShoppingListService } from "../../src/services/shopping-list-service";
-import { createUserService } from "../../src/services/user-service";
+import {
+  createUserService,
+  type UserService,
+} from "../../src/services/user-service";
 import { createSessionMiddleware } from "../../src/session";
 
 const migrationsDirectory = path.resolve(__dirname, "../../src/db/migrations");
@@ -22,6 +25,8 @@ const seedsDirectory = path.resolve(__dirname, "../../src/db/seeds");
 export interface TestContext {
   connection: Knex;
   app: Express;
+  sessionMiddleware: RequestHandler;
+  userService: UserService;
 }
 
 export async function createTestContext(): Promise<TestContext> {
@@ -39,15 +44,14 @@ export async function createTestContext(): Promise<TestContext> {
 
   const userService = createUserService(database);
   const requireAuth = createRequireAuth(userService);
+  const sessionMiddleware = createSessionMiddleware({
+    SESSION_SECRET: "test-secret",
+    NODE_ENV: "test",
+  });
 
   const app = express();
   app.use(express.json());
-  app.use(
-    createSessionMiddleware({
-      SESSION_SECRET: "test-secret",
-      NODE_ENV: "test",
-    }),
-  );
+  app.use(sessionMiddleware);
 
   // test-only helper that simulates a successful login until the login api exists
   app.post("/test/login/:userId", (httpRequest, response) => {
@@ -70,7 +74,7 @@ export async function createTestContext(): Promise<TestContext> {
   );
   app.use(errorHandler);
 
-  return { connection, app };
+  return { connection, app, sessionMiddleware, userService };
 }
 
 export async function loginAs(app: Express, userId: number): Promise<string[]> {

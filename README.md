@@ -215,6 +215,19 @@ to the list with these two steps.
 Validation errors from the backend (`400`) are shown below the matching field,
 other errors above the form. After saving, the dashboard is opened again.
 
+## Realtime connections
+
+Socket.IO runs on the same HTTP server as the API (path `/socket.io`) and
+shares the express session. A handshake is only accepted if the session belongs
+to an existing user, otherwise the client gets the connect error
+`Authentication required`. Every accepted socket joins the room `user:<id>`
+(`userRoom()` in `backend/src/realtime/socket-server.ts`), so events can be sent
+to all connections of one user.
+
+The frontend connects after login and disconnects on logout
+(`frontend/src/realtime/socket.ts`). In development the Vite proxy forwards
+`/socket.io` including WebSockets to the backend.
+
 ## Login API
 
 `POST /api/auth/login` accepts a JSON body containing `username` and `password`.
