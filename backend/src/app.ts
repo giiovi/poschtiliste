@@ -3,10 +3,12 @@ import express, { type Express } from "express";
 import { createDatabase, type Database } from "./db/database";
 import { errorHandler } from "./middleware/error-handler";
 import { createRequireAuth } from "./middleware/require-auth";
+import { createAdminUserRouter } from "./routes/admin-user-routes";
 import { createAuthRouter } from "./routes/auth-routes";
 import { createHealthRouter } from "./routes/health-routes";
 import { createShoppingListRouter } from "./routes/shopping-list-routes";
 import { createUserRouter } from "./routes/user-routes";
+import { createAdminUserService } from "./services/admin-user-service";
 import { createAuthService } from "./services/auth-service";
 import { createShoppingItemService } from "./services/shopping-item-service";
 import { createShoppingListService } from "./services/shopping-list-service";
@@ -41,6 +43,10 @@ export function createApp(options: CreateAppOptions = {}): Express {
     ),
   );
   app.use("/api/users", createUserRouter(userService, requireAuth));
+  app.use(
+    "/api/admin/users",
+    createAdminUserRouter(createAdminUserService(database), requireAuth),
+  );
   app.use(errorHandler);
 
   return app;

@@ -113,6 +113,18 @@ otherwise. Admin-only routes additionally use the role middleware and answer
 | `GET`         | `/api/lists/:id/items`               | yes       | Items from an accessible shopping list                                                                      |
 | `POST`        | `/api/lists/:id/items`               | yes       | Validate and create an item in an accessible shopping list                                                  |
 | `GET`         | `/api/users`                         | yes       | Selectable users (`id`, `username`) sorted by username                                                      |
+| `GET`         | `/api/admin/users`                   | admin     | All users without password hashes, sorted by username                                                       |
+| `POST`        | `/api/admin/users`                   | admin     | Create a user (`username`, `password`, optional `role`), returns `201`; `409` if the username is taken      |
+| `PATCH`       | `/api/admin/users/:id`               | admin     | Change `username` and/or `role`; `409` if the username is taken                                             |
+| `DELETE`      | `/api/admin/users/:id`               | admin     | Delete a user and their list assignments, returns `204`; `409` while the user is responsible for lists      |
+| `PUT`         | `/api/admin/users/:id/password`      | admin     | Reset the password (`{ "password": string }`), returns `204`                                                |
+
+Admin routes answer `401` without a session and `403` for normal users.
+Usernames are trimmed and contain 1 to 100 characters, passwords 8 characters
+up to 72 bytes; they are stored as bcrypt hashes only. Roles are `admin` or
+`user` (default). Administrators cannot delete their own account or remove
+their own admin role (`409`), so the application cannot lose its last admin.
+Unknown users answer `404`.
 
 Body of `POST /api/lists` (JSON):
 
