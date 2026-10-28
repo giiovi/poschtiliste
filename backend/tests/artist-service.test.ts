@@ -1,3 +1,5 @@
+import type { Knex } from "knex";
+
 import type { Database } from "../src/db/database";
 import { createArtistService } from "../src/services/artist-service";
 import type { Artist } from "../src/types/artist";
@@ -9,7 +11,8 @@ function createDatabaseStub(rows: Artist[] = []): {
   const all = jest.fn().mockResolvedValue(rows);
 
   return {
-    database: { all },
+    // the artist service only uses raw queries, the connection is not needed
+    database: { connection: {} as Knex, all },
     all,
   };
 }
