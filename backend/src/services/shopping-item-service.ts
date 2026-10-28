@@ -9,7 +9,14 @@ interface ShoppingItemRow extends Omit<ShoppingItem, "purchased"> {
 export type ShoppingItemResult<T> =
   | { status: "ok"; value: T }
   | { status: "forbidden" }
-  | { status: "not-found" };
+  | { status: "not-found" }
+  | { status: "item-not-found" };
+
+export interface ShoppingItemUpdate {
+  name?: string;
+  quantity?: number;
+  purchased?: boolean;
+}
 
 export interface ShoppingItemService {
   listForUser(
@@ -20,6 +27,12 @@ export interface ShoppingItemService {
     shoppingListId: number,
     name: string,
     quantity: number,
+    user: PublicUser,
+  ): Promise<ShoppingItemResult<ShoppingItem>>;
+  updateForUser(
+    shoppingListId: number,
+    shoppingItemId: number,
+    update: ShoppingItemUpdate,
     user: PublicUser,
   ): Promise<ShoppingItemResult<ShoppingItem>>;
 }
@@ -97,6 +110,37 @@ export function createShoppingItemService(
          RETURNING ${ITEM_COLUMNS}`,
         [shoppingListId, name, quantity],
       );
+
+      return { status: "ok", value: toShoppingItem(rows[0]) };
+    },
+
+    async updateForUser(shoppingListId, shoppingItemId, update, user) {
+      const access = await checkListAccess(database, shoppingListId, user);
+
+      if (access !== "allowed") {
+        return { status: access };
+      }
+
+      const rows = await database.all<ShoppingItemRow>(
+        `UPDATE shopping_items
+         SET name = COALESCE(?, name),
+             quantity = COALESCE(?, quantity),
+             purchased = COALESCE(?, purchased),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND shopping_list_id = ?
+         RETURNING ${ITEM_COLUMNS}`,
+        [
+          update.name ?? null,
+          update.quantity ?? null,
+          update.purchased ?? null,
+          shoppingItemId,
+          shoppingListId,
+        ],
+      );
+
+      if (!rows[0]) {
+        return { status: "item-not-found" };
+      }
 
       return { status: "ok", value: toShoppingItem(rows[0]) };
     },

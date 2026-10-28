@@ -19,6 +19,12 @@ interface CreateShoppingItemBody {
   quantity: number;
 }
 
+interface UpdateShoppingItemBody {
+  name?: string;
+  quantity?: number;
+  purchased?: boolean;
+}
+
 function isIsoDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
@@ -88,6 +94,46 @@ function parseCreateItemBody(value: unknown): CreateShoppingItemBody | null {
   return { name, quantity: quantity as number };
 }
 
+function parseUpdateItemBody(value: unknown): UpdateShoppingItemBody | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+
+  const body = value as Record<string, unknown>;
+  const update: UpdateShoppingItemBody = {};
+
+  if ("name" in body) {
+    if (typeof body.name !== "string") {
+      return null;
+    }
+
+    const name = body.name.trim();
+    if (name.length === 0 || name.length > 255) {
+      return null;
+    }
+    update.name = name;
+  }
+
+  if ("quantity" in body) {
+    if (
+      !Number.isSafeInteger(body.quantity) ||
+      (body.quantity as number) <= 0
+    ) {
+      return null;
+    }
+    update.quantity = body.quantity as number;
+  }
+
+  if ("purchased" in body) {
+    if (typeof body.purchased !== "boolean") {
+      return null;
+    }
+    update.purchased = body.purchased;
+  }
+
+  return Object.keys(update).length > 0 ? update : null;
+}
+
 function sendItemResult(
   result: ShoppingItemResult<ShoppingItem | ShoppingItem[]>,
   response: Parameters<RequestHandler>[1],
@@ -95,6 +141,11 @@ function sendItemResult(
 ): void {
   if (result.status === "not-found") {
     response.status(404).json({ error: "Shopping list not found" });
+    return;
+  }
+
+  if (result.status === "item-not-found") {
+    response.status(404).json({ error: "Shopping item not found" });
     return;
   }
 
@@ -189,6 +240,39 @@ export function createShoppingListRouter(
       );
 
       sendItemResult(result, response, 201);
+    }),
+  );
+
+  router.patch(
+    "/:id/items/:itemId",
+    asyncHandler(async (request, response) => {
+      const shoppingListId = parsePositiveId(request.params.id);
+      const shoppingItemId = parsePositiveId(request.params.itemId);
+      const body = parseUpdateItemBody(request.body);
+
+      if (shoppingListId === null) {
+        response.status(400).json({ error: "Invalid shopping list id" });
+        return;
+      }
+
+      if (shoppingItemId === null) {
+        response.status(400).json({ error: "Invalid shopping item id" });
+        return;
+      }
+
+      if (!body) {
+        response.status(400).json({ error: "Invalid shopping item data" });
+        return;
+      }
+
+      const result = await shoppingItemService.updateForUser(
+        shoppingListId,
+        shoppingItemId,
+        body,
+        request.currentUser as PublicUser,
+      );
+
+      sendItemResult(result, response);
     }),
   );
 

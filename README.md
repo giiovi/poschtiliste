@@ -97,21 +97,26 @@ marked as protected require an authenticated session and answer `401`
 otherwise. Admin-only routes additionally use the role middleware and answer
 `403` when an authenticated user does not have the `admin` role.
 
-| Method | Route                  | Protected | Description                                                                   |
-| ------ | ---------------------- | --------- | ----------------------------------------------------------------------------- |
-| `GET`  | `/api/health`          | no        | Health check                                                                  |
-| `POST` | `/api/auth/login`      | no        | Login and create a session                                                    |
-| `POST` | `/api/auth/logout`     | no        | Destroy the session and clear its cookie                                      |
-| `GET`  | `/api/auth/me`         | yes       | Return the current user without the password hash                             |
-| `GET`  | `/api/lists`           | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists |
-| `POST` | `/api/lists`           | yes       | Create and persist a shopping list                                            |
-| `GET`  | `/api/lists/:id/items` | yes       | Items from an accessible shopping list                                        |
-| `POST` | `/api/lists/:id/items` | yes       | Validate and create an item in an accessible shopping list                    |
+| Method  | Route                          | Protected | Description                                                                   |
+| ------- | ------------------------------ | --------- | ----------------------------------------------------------------------------- |
+| `GET`   | `/api/health`                  | no        | Health check                                                                  |
+| `POST`  | `/api/auth/login`              | no        | Login and create a session                                                    |
+| `POST`  | `/api/auth/logout`             | no        | Destroy the session and clear its cookie                                      |
+| `GET`   | `/api/auth/me`                 | yes       | Return the current user without the password hash                             |
+| `GET`   | `/api/lists`                   | yes       | Shopping lists; users see assigned or responsible lists, admins see all lists |
+| `POST`  | `/api/lists`                   | yes       | Create and persist a shopping list                                            |
+| `GET`   | `/api/lists/:id/items`         | yes       | Items from an accessible shopping list                                        |
+| `POST`  | `/api/lists/:id/items`         | yes       | Validate and create an item in an accessible shopping list                    |
+| `PATCH` | `/api/lists/:id/items/:itemId` | yes       | Edit an item's name, quantity, or purchased status in an accessible list      |
 
 Shopping-item names are trimmed and must contain between 1 and 255 characters.
 Quantities must be positive integers and default to `1` when omitted. Normal
 users receive `403 Forbidden` for lists they are neither assigned to nor
 responsible for; administrators can access every list.
+
+Item updates are partial: send at least one of `name`, `quantity`, or
+`purchased`. Names and quantities follow the same validation rules as item
+creation, while `purchased` must be a boolean. A missing item returns `404`.
 
 ## Frontend login flow
 
