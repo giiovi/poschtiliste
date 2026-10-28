@@ -9,7 +9,8 @@ interface ShoppingItemRow extends Omit<ShoppingItem, "purchased"> {
 export type ShoppingItemResult<T> =
   | { status: "ok"; value: T }
   | { status: "forbidden" }
-  | { status: "not-found" };
+  | { status: "not-found" }
+  | { status: "item-not-found" };
 
 export interface ShoppingItemService {
   listForUser(
@@ -22,6 +23,11 @@ export interface ShoppingItemService {
     quantity: number,
     user: PublicUser,
   ): Promise<ShoppingItemResult<ShoppingItem>>;
+  deleteForUser(
+    shoppingListId: number,
+    itemId: number,
+    user: PublicUser,
+  ): Promise<ShoppingItemResult<null>>;
 }
 
 const ITEM_COLUMNS =
@@ -99,6 +105,26 @@ export function createShoppingItemService(
       );
 
       return { status: "ok", value: toShoppingItem(rows[0]) };
+    },
+
+    async deleteForUser(shoppingListId, itemId, user) {
+      const access = await checkListAccess(database, shoppingListId, user);
+
+      if (access !== "allowed") {
+        return { status: access };
+      }
+
+      // the list id condition prevents deleting items of other lists
+      const rows = await database.all<{ id: number }>(
+        `DELETE FROM shopping_items
+         WHERE id = ? AND shopping_list_id = ?
+         RETURNING id`,
+        [itemId, shoppingListId],
+      );
+
+      return rows[0]
+        ? { status: "ok", value: null }
+        : { status: "item-not-found" };
     },
   };
 }
