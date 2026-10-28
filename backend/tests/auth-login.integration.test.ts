@@ -7,7 +7,7 @@ import knex, { type Knex } from "knex";
 import request from "supertest";
 
 import { createApp } from "../src/app";
-import type { Database } from "../src/db/database";
+import { wrapConnection, type Database } from "../src/db/database";
 import { SESSION_COOKIE_NAME } from "../src/session";
 
 const migrationsDirectory = path.resolve(__dirname, "../src/db/migrations");
@@ -32,14 +32,7 @@ describe("auth routes", () => {
     });
     await connection.migrate.latest();
 
-    database = {
-      async all<T>(sql: string, parameters: unknown[] = []): Promise<T[]> {
-        return (await connection.raw(
-          sql,
-          parameters as Knex.RawBinding[],
-        )) as T[];
-      },
-    };
+    database = wrapConnection(connection);
   });
 
   beforeEach(async () => {

@@ -1,14 +1,38 @@
+import type { Knex } from "knex";
+
 import type { Database } from "../db/database";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from "../errors/http-error";
 import type { ShoppingList } from "../types/shopping-list";
 import type { PublicUser } from "../types/user";
+import type {
+  ShoppingListInput,
+  ShoppingListUpdate,
+} from "../validation/shopping-list-validation";
+
+export interface ShoppingListWithAssignments extends ShoppingList {
+  assigned_user_ids: number[];
+}
 
 export interface ShoppingListService {
   listForUser(user: PublicUser): Promise<ShoppingList[]>;
-  createForUser(
-    title: string,
-    dueDate: string | null,
-    userId: number,
+  create(input: ShoppingListInput): Promise<ShoppingListWithAssignments>;
+  update(
+    id: number,
+    update: ShoppingListUpdate,
+    user: PublicUser,
   ): Promise<ShoppingList>;
+  remove(id: number, user: PublicUser): Promise<void>;
+  addAssignment(
+    id: number,
+    userId: number,
+    user: PublicUser,
+  ): Promise<number[]>;
+  removeAssignment(id: number, userId: number, user: PublicUser): Promise<void>;
 }
 
 interface ShoppingListRow extends Omit<ShoppingList, "completed"> {
@@ -17,12 +41,57 @@ interface ShoppingListRow extends Omit<ShoppingList, "completed"> {
 
 const LIST_COLUMNS =
   "shopping_lists.id, shopping_lists.title, shopping_lists.due_date, shopping_lists.responsible_user_id, shopping_lists.completed, shopping_lists.created_at, shopping_lists.updated_at";
-const RETURNING_LIST_COLUMNS =
-  "id, title, due_date, responsible_user_id, completed, created_at, updated_at";
 
 function toShoppingList(row: ShoppingListRow): ShoppingList {
   // sqlite stores booleans as integers
   return { ...row, completed: Boolean(row.completed) };
+}
+
+async function assertUsersExist(
+  transaction: Knex.Transaction,
+  userIds: number[],
+): Promise<void> {
+  if (userIds.length === 0) {
+    return;
+  }
+
+  const rows: { id: number }[] = await transaction("users")
+    .select("id")
+    .whereIn("id", userIds);
+  const existingIds = new Set(rows.map((row) => row.id));
+  const missingIds = userIds.filter((userId) => !existingIds.has(userId));
+
+  if (missingIds.length > 0) {
+    throw new ValidationError(
+      `Unknown user id(s): ${missingIds.sort((a, b) => a - b).join(", ")}`,
+    );
+  }
+}
+
+async function assertAccess(
+  transaction: Knex.Transaction,
+  id: number,
+  user: PublicUser,
+): Promise<void> {
+  const row: ShoppingListRow | undefined = await transaction("shopping_lists")
+    .where("id", id)
+    .first();
+
+  if (!row) {
+    throw new NotFoundError("Shopping list not found");
+  }
+
+  if (user.role === "admin" || row.responsible_user_id === user.id) {
+    return;
+  }
+
+  const assignment = await transaction("list_assignments")
+    .where({ shopping_list_id: id, user_id: user.id })
+    .first();
+
+  if (!assignment) {
+    throw new ForbiddenError("No access to this shopping list");
+  }
 }
 
 export function createShoppingListService(
@@ -49,15 +118,137 @@ export function createShoppingListService(
       return rows.map(toShoppingList);
     },
 
-    async createForUser(title, dueDate, userId): Promise<ShoppingList> {
-      const rows = await database.all<ShoppingListRow>(
-        `INSERT INTO shopping_lists (title, due_date, responsible_user_id)
-         VALUES (?, ?, ?)
-         RETURNING ${RETURNING_LIST_COLUMNS}`,
-        [title, dueDate, userId],
-      );
+    async create(
+      input: ShoppingListInput,
+    ): Promise<ShoppingListWithAssignments> {
+      return database.connection.transaction(async (transaction) => {
+        const referencedUserIds = [
+          ...new Set([input.responsibleUserId, ...input.assignedUserIds]),
+        ];
+        await assertUsersExist(transaction, referencedUserIds);
 
-      return toShoppingList(rows[0]);
+        const [listId] = await transaction("shopping_lists").insert({
+          title: input.title,
+          due_date: input.dueDate,
+          responsible_user_id: input.responsibleUserId,
+        });
+
+        if (input.assignedUserIds.length > 0) {
+          await transaction("list_assignments").insert(
+            input.assignedUserIds.map((userId) => ({
+              shopping_list_id: listId,
+              user_id: userId,
+            })),
+          );
+        }
+
+        const [row]: ShoppingListRow[] = await transaction("shopping_lists")
+          .select("*")
+          .where("id", listId);
+
+        return {
+          ...toShoppingList(row),
+          assigned_user_ids: input.assignedUserIds,
+        };
+      });
+    },
+
+    async update(
+      id: number,
+      update: ShoppingListUpdate,
+      user: PublicUser,
+    ): Promise<ShoppingList> {
+      return database.connection.transaction(async (transaction) => {
+        await assertAccess(transaction, id, user);
+
+        if (update.responsibleUserId !== undefined) {
+          await assertUsersExist(transaction, [update.responsibleUserId]);
+        }
+
+        await transaction("shopping_lists")
+          .where("id", id)
+          .update({
+            ...(update.title !== undefined && { title: update.title }),
+            ...(update.dueDate !== undefined && { due_date: update.dueDate }),
+            ...(update.responsibleUserId !== undefined && {
+              responsible_user_id: update.responsibleUserId,
+            }),
+            ...(update.completed !== undefined && {
+              completed: update.completed,
+            }),
+            updated_at: transaction.fn.now(),
+          });
+
+        const [updated]: ShoppingListRow[] = await transaction("shopping_lists")
+          .select("*")
+          .where("id", id);
+
+        return toShoppingList(updated);
+      });
+    },
+
+    async remove(id: number, user: PublicUser): Promise<void> {
+      await database.connection.transaction(async (transaction) => {
+        await assertAccess(transaction, id, user);
+        await transaction("shopping_items")
+          .where("shopping_list_id", id)
+          .delete();
+        await transaction("list_assignments")
+          .where("shopping_list_id", id)
+          .delete();
+        await transaction("shopping_lists").where("id", id).delete();
+      });
+    },
+
+    async addAssignment(
+      id: number,
+      userId: number,
+      user: PublicUser,
+    ): Promise<number[]> {
+      return database.connection.transaction(async (transaction) => {
+        await assertAccess(transaction, id, user);
+        await assertUsersExist(transaction, [userId]);
+
+        const existing = await transaction("list_assignments")
+          .where({ shopping_list_id: id, user_id: userId })
+          .first();
+
+        if (existing) {
+          throw new ConflictError("User is already assigned to this list");
+        }
+
+        await transaction("list_assignments").insert({
+          shopping_list_id: id,
+          user_id: userId,
+        });
+
+        const rows: { user_id: number }[] = await transaction(
+          "list_assignments",
+        )
+          .select("user_id")
+          .where("shopping_list_id", id)
+          .orderBy("user_id");
+
+        return rows.map((row) => row.user_id);
+      });
+    },
+
+    async removeAssignment(
+      id: number,
+      userId: number,
+      user: PublicUser,
+    ): Promise<void> {
+      await database.connection.transaction(async (transaction) => {
+        await assertAccess(transaction, id, user);
+
+        const deleted = await transaction("list_assignments")
+          .where({ shopping_list_id: id, user_id: userId })
+          .delete();
+
+        if (deleted === 0) {
+          throw new NotFoundError("Assignment not found");
+        }
+      });
     },
   };
 }
