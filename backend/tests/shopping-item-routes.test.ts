@@ -15,6 +15,8 @@ describe("shopping-item routes", () => {
   let bobId: number;
   let carolId: number;
   let shoppingListId: number;
+  let milkItemId: number;
+  let breadItemId: number;
   let cookiesByUserId: Map<number, string[]>;
 
   beforeEach(async () => {
@@ -49,20 +51,18 @@ describe("shopping-item routes", () => {
       shopping_list_id: shoppingListId,
       user_id: bobId,
     });
-    await connection("shopping_items").insert([
-      {
-        shopping_list_id: shoppingListId,
-        name: "Milk",
-        quantity: 2,
-        purchased: false,
-      },
-      {
-        shopping_list_id: shoppingListId,
-        name: "Bread",
-        quantity: 1,
-        purchased: true,
-      },
-    ]);
+    [milkItemId] = await connection("shopping_items").insert({
+      shopping_list_id: shoppingListId,
+      name: "Milk",
+      quantity: 2,
+      purchased: false,
+    });
+    [breadItemId] = await connection("shopping_items").insert({
+      shopping_list_id: shoppingListId,
+      name: "Bread",
+      quantity: 1,
+      purchased: true,
+    });
 
     cookiesByUserId = new Map();
   });
@@ -317,5 +317,104 @@ describe("shopping-item routes", () => {
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: "Invalid shopping list id" });
+  });
+
+  test("updates an item's name and quantity", async () => {
+    const response = await request(context.app)
+      .patch(`/api/lists/${shoppingListId}/items/${milkItemId}`)
+      .set("Cookie", await cookiesFor(bobId))
+      .send({ name: "  Oat milk  ", quantity: 3 });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      id: milkItemId,
+      name: "Oat milk",
+      quantity: 3,
+      purchased: false,
+    });
+
+    const storedItem = await context
+      .connection("shopping_items")
+      .where({ id: milkItemId })
+      .first();
+    expect(storedItem).toMatchObject({ name: "Oat milk", quantity: 3 });
+  });
+
+  test("marks an item as purchased and can unmark it", async () => {
+    const purchasedResponse = await request(context.app)
+      .patch(`/api/lists/${shoppingListId}/items/${milkItemId}`)
+      .set("Cookie", await cookiesFor(aliceId))
+      .send({ purchased: true });
+
+    expect(purchasedResponse.status).toBe(200);
+    expect(purchasedResponse.body.purchased).toBe(true);
+
+    const unpurchasedResponse = await request(context.app)
+      .patch(`/api/lists/${shoppingListId}/items/${breadItemId}`)
+      .set("Cookie", await cookiesFor(aliceId))
+      .send({ purchased: false });
+
+    expect(unpurchasedResponse.status).toBe(200);
+    expect(unpurchasedResponse.body.purchased).toBe(false);
+
+    const storedItems = await context
+      .connection("shopping_items")
+      .whereIn("id", [milkItemId, breadItemId])
+      .orderBy("id");
+    expect(storedItems.map((item) => item.purchased)).toEqual([1, 0]);
+  });
+
+  test.each([
+    [{}],
+    [{ name: "" }],
+    [{ name: "Milk", quantity: 0 }],
+    [{ quantity: -1 }],
+    [{ quantity: 1.5 }],
+    [{ quantity: "2" }],
+    [{ purchased: 1 }],
+  ])("rejects invalid item update data %#", async (body) => {
+    const response = await request(context.app)
+      .patch(`/api/lists/${shoppingListId}/items/${milkItemId}`)
+      .set("Cookie", await cookiesFor(aliceId))
+      .send(body);
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: "Invalid shopping item data" });
+  });
+
+  test("does not update an item for a user without list access", async () => {
+    const response = await request(context.app)
+      .patch(`/api/lists/${shoppingListId}/items/${milkItemId}`)
+      .set("Cookie", await cookiesFor(carolId))
+      .send({ purchased: true });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: "Shopping list access denied" });
+
+    const storedItem = await context
+      .connection("shopping_items")
+      .where({ id: milkItemId })
+      .first();
+    expect(storedItem.purchased).toBe(0);
+  });
+
+  test("returns 404 when the item does not exist in the list", async () => {
+    const response = await request(context.app)
+      .patch(`/api/lists/${shoppingListId}/items/99999`)
+      .set("Cookie", await cookiesFor(aliceId))
+      .send({ quantity: 2 });
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: "Shopping item not found" });
+  });
+
+  test("rejects an invalid item id", async () => {
+    const response = await request(context.app)
+      .patch(`/api/lists/${shoppingListId}/items/not-a-number`)
+      .set("Cookie", await cookiesFor(aliceId))
+      .send({ quantity: 2 });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: "Invalid shopping item id" });
   });
 });

@@ -112,6 +112,7 @@ otherwise. Admin-only routes additionally use the role middleware and answer
 | `DELETE`      | `/api/lists/:id/assignments/:userId` | yes       | Remove an assignment, returns `204`; `404` if not assigned                                                                       |
 | `GET`         | `/api/lists/:id/items`               | yes       | Items from an accessible shopping list                                                                                           |
 | `POST`        | `/api/lists/:id/items`               | yes       | Validate and create an item in an accessible shopping list                                                                       |
+| `PATCH`       | `/api/lists/:id/items/:itemId`       | yes       | Edit an item's name, quantity, or purchased status in an accessible list                                                         |
 | `DELETE`      | `/api/lists/:id/items/:itemId`       | yes       | Delete an item of an accessible list, returns `204`; `403` without access, `404` if the list or the item in this list is unknown |
 | `GET`         | `/api/users`                         | yes       | Selectable users (`id`, `username`) sorted by username                                                                           |
 | `GET`         | `/api/admin/users`                   | admin     | All users without password hashes, sorted by username                                                                            |
@@ -143,6 +144,10 @@ Shopping-item names are trimmed and must contain between 1 and 255 characters.
 Quantities must be positive integers and default to `1` when omitted. Normal
 users receive `403 Forbidden` for lists they are neither assigned to nor
 responsible for; administrators can access every list.
+
+Item updates are partial: send at least one of `name`, `quantity`, or
+`purchased`. Names and quantities follow the same validation rules as item
+creation, while `purchased` must be a boolean. A missing item returns `404`.
 
 ## Frontend login flow
 
