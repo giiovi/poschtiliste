@@ -252,6 +252,11 @@ When responsibility or an assignment is removed, the previous recipients also
 receive the final `list:updated` event so their frontend can remove or refresh
 the list.
 
+The frontend shows incoming events as a non-blocking toast for four seconds.
+The dashboard refreshes its cards in the background, while an open list detail
+applies item additions, updates and deletions directly without a page reload.
+Events for other list ids are ignored by the detail view.
+
 ## User administration
 
 Administrators see a `Benutzer` link in the app bar that opens `/admin/users`.
