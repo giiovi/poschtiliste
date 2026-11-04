@@ -34,6 +34,12 @@ export function createAppRouter(
         meta: { requiresAuth: true },
       },
       {
+        path: "/lists/:id(\\d+)",
+        name: "list-detail",
+        component: () => import("./views/ShoppingListDetailView.vue"),
+        meta: { requiresAuth: true },
+      },
+      {
         path: "/lists/:id(\\d+)/edit",
         name: "list-edit",
         component: () => import("./views/ShoppingListFormView.vue"),

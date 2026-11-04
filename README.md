@@ -199,6 +199,14 @@ Every card carries a status chip: `Offen`, `Überfällig` (due date in the past
 and not completed) or `Abgeschlossen`. The layout is fluid and usable down to a
 viewport width of 320px.
 
+## Mobile shopping-list detail
+
+Select a list title on the dashboard to open its detail view. The view loads
+the current items and lets assigned users add, edit, purchase, unpurchase and
+delete them without reloading the page. Item checkboxes and action buttons use
+mobile-friendly touch targets, and the layout changes to full-width controls on
+small screens.
+
 ## Create and edit shopping lists
 
 `Neue Liste` on the dashboard opens `/lists/new`, `Bearbeiten` on a card opens
