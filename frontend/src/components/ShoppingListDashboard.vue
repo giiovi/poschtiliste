@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 
 import {
   fetchShoppingLists,
   UnauthenticatedError,
 } from "../api/shopping-lists";
+import { subscribeRealtime } from "../realtime/socket";
 import type { ShoppingList } from "../types/shopping-list";
 import ShoppingListCard from "./ShoppingListCard.vue";
 
@@ -16,6 +17,7 @@ const emit = defineEmits<{ unauthenticated: [] }>();
 
 const state = ref<DashboardState>("loading");
 const shoppingLists = ref<ShoppingList[]>([]);
+let unsubscribeRealtime: (() => void) | undefined;
 
 function byDueDate(first: ShoppingList, second: ShoppingList): number {
   // lists without a due date belong at the end
@@ -42,8 +44,10 @@ const isEmpty = computed(
   () => state.value === "ready" && shoppingLists.value.length === 0,
 );
 
-async function loadShoppingLists(): Promise<void> {
-  state.value = "loading";
+async function loadShoppingLists(showLoading = true): Promise<void> {
+  if (showLoading) {
+    state.value = "loading";
+  }
 
   try {
     shoppingLists.value = await fetchShoppingLists();
@@ -55,11 +59,20 @@ async function loadShoppingLists(): Promise<void> {
       return;
     }
 
-    state.value = "error";
+    if (showLoading) {
+      state.value = "error";
+    }
   }
 }
 
-onMounted(loadShoppingLists);
+onMounted(() => {
+  void loadShoppingLists();
+  unsubscribeRealtime = subscribeRealtime(() => {
+    void loadShoppingLists(false);
+  });
+});
+
+onUnmounted(() => unsubscribeRealtime?.());
 </script>
 
 <template>
@@ -72,7 +85,7 @@ onMounted(loadShoppingLists);
         <button
           type="button"
           class="dashboard__refresh"
-          @click="loadShoppingLists"
+          @click="loadShoppingLists()"
         >
           Aktualisieren
         </button>
@@ -104,7 +117,7 @@ onMounted(loadShoppingLists);
       <button
         type="button"
         class="dashboard__refresh"
-        @click="loadShoppingLists"
+        @click="loadShoppingLists()"
       >
         Erneut versuchen
       </button>

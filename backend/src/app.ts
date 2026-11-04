@@ -3,6 +3,7 @@ import express, { type Express, type RequestHandler } from "express";
 import { createDatabase, type Database } from "./db/database";
 import { errorHandler } from "./middleware/error-handler";
 import { createRequireAuth } from "./middleware/require-auth";
+import { RealtimeNotifier } from "./realtime/realtime-notifier";
 import { createAdminUserRouter } from "./routes/admin-user-routes";
 import { createAuthRouter } from "./routes/auth-routes";
 import { createHealthRouter } from "./routes/health-routes";
@@ -19,6 +20,7 @@ interface CreateAppOptions {
   database?: Database;
   environment?: NodeJS.ProcessEnv;
   sessionMiddleware?: RequestHandler;
+  realtimeNotifier?: RealtimeNotifier;
 }
 
 export function createApp(options: CreateAppOptions = {}): Express {
@@ -41,6 +43,7 @@ export function createApp(options: CreateAppOptions = {}): Express {
       shoppingListService,
       shoppingItemService,
       requireAuth,
+      options.realtimeNotifier,
     ),
   );
   app.use("/api/users", createUserRouter(userService, requireAuth));

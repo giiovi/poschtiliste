@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from "express";
 
 import { ValidationError } from "../errors/http-error";
 import { asyncHandler } from "../middleware/async-handler";
+import { RealtimeNotifier } from "../realtime/realtime-notifier";
 import type {
   ShoppingItemResult,
   ShoppingItemService,
@@ -141,6 +142,7 @@ export function createShoppingListRouter(
   shoppingListService: ShoppingListService,
   shoppingItemService: ShoppingItemService,
   requireAuth: RequestHandler,
+  realtimeNotifier = new RealtimeNotifier(),
 ): Router {
   const router = Router();
 
@@ -163,6 +165,17 @@ export function createShoppingListRouter(
       const currentUser = request.currentUser as PublicUser;
       const input = validateShoppingListInput(request.body, currentUser.id);
       const list = await shoppingListService.create(input);
+      realtimeNotifier.notifyUsers(
+        await shoppingListService.notificationRecipientIds(list.id),
+        {
+          name: "list:updated",
+          payload: {
+            listId: list.id,
+            actorUserId: currentUser.id,
+            change: "created",
+          },
+        },
+      );
 
       response.status(201).json(list);
     }),
@@ -181,10 +194,28 @@ export function createShoppingListRouter(
   );
 
   const updateList = asyncHandler(async (request, response) => {
+    const listId = parseListId(request.params.id as string);
+    const previousRecipients =
+      await shoppingListService.notificationRecipientIds(listId);
+    const currentUser = request.currentUser as PublicUser;
     const list = await shoppingListService.update(
-      parseListId(request.params.id as string),
+      listId,
       validateShoppingListUpdate(request.body),
-      request.currentUser as PublicUser,
+      currentUser,
+    );
+    realtimeNotifier.notifyUsers(
+      [
+        ...previousRecipients,
+        ...(await shoppingListService.notificationRecipientIds(listId)),
+      ],
+      {
+        name: "list:updated",
+        payload: {
+          listId,
+          actorUserId: currentUser.id,
+          change: "updated",
+        },
+      },
     );
 
     response.json(list);
@@ -196,10 +227,19 @@ export function createShoppingListRouter(
   router.delete(
     "/:id",
     asyncHandler(async (request, response) => {
-      await shoppingListService.remove(
-        parseListId(request.params.id as string),
-        request.currentUser as PublicUser,
-      );
+      const listId = parseListId(request.params.id as string);
+      const recipientIds =
+        await shoppingListService.notificationRecipientIds(listId);
+      const currentUser = request.currentUser as PublicUser;
+      await shoppingListService.remove(listId, currentUser);
+      realtimeNotifier.notifyUsers(recipientIds, {
+        name: "list:updated",
+        payload: {
+          listId,
+          actorUserId: currentUser.id,
+          change: "deleted",
+        },
+      });
 
       response.status(204).end();
     }),
@@ -208,10 +248,24 @@ export function createShoppingListRouter(
   router.post(
     "/:id/assignments",
     asyncHandler(async (request, response) => {
+      const listId = parseListId(request.params.id as string);
+      const assignedUserId = parseId(request.body?.userId, "User id");
+      const currentUser = request.currentUser as PublicUser;
       const assignedUserIds = await shoppingListService.addAssignment(
-        parseListId(request.params.id as string),
-        parseId(request.body?.userId, "User id"),
-        request.currentUser as PublicUser,
+        listId,
+        assignedUserId,
+        currentUser,
+      );
+      realtimeNotifier.notifyUsers(
+        await shoppingListService.notificationRecipientIds(listId),
+        {
+          name: "list:assigned",
+          payload: {
+            listId,
+            assignedUserId,
+            actorUserId: currentUser.id,
+          },
+        },
       );
 
       response.status(201).json({ assigned_user_ids: assignedUserIds });
@@ -221,10 +275,29 @@ export function createShoppingListRouter(
   router.delete(
     "/:id/assignments/:userId",
     asyncHandler(async (request, response) => {
+      const listId = parseListId(request.params.id as string);
+      const removedUserId = parseId(request.params.userId, "User id");
+      const currentUser = request.currentUser as PublicUser;
+      const previousRecipients =
+        await shoppingListService.notificationRecipientIds(listId);
       await shoppingListService.removeAssignment(
-        parseListId(request.params.id as string),
-        parseId(request.params.userId, "User id"),
-        request.currentUser as PublicUser,
+        listId,
+        removedUserId,
+        currentUser,
+      );
+      realtimeNotifier.notifyUsers(
+        [
+          ...previousRecipients,
+          ...(await shoppingListService.notificationRecipientIds(listId)),
+        ],
+        {
+          name: "list:updated",
+          payload: {
+            listId,
+            actorUserId: currentUser.id,
+            change: "assignment-removed",
+          },
+        },
       );
 
       response.status(204).end();
@@ -273,6 +346,21 @@ export function createShoppingListRouter(
         request.currentUser as PublicUser,
       );
 
+      if (result.status === "ok") {
+        const currentUser = request.currentUser as PublicUser;
+        realtimeNotifier.notifyUsers(
+          await shoppingListService.notificationRecipientIds(shoppingListId),
+          {
+            name: "item:added",
+            payload: {
+              listId: shoppingListId,
+              actorUserId: currentUser.id,
+              item: result.value,
+            },
+          },
+        );
+      }
+
       sendItemResult(result, response, 201);
     }),
   );
@@ -306,6 +394,21 @@ export function createShoppingListRouter(
         request.currentUser as PublicUser,
       );
 
+      if (result.status === "ok") {
+        const currentUser = request.currentUser as PublicUser;
+        realtimeNotifier.notifyUsers(
+          await shoppingListService.notificationRecipientIds(shoppingListId),
+          {
+            name: "item:updated",
+            payload: {
+              listId: shoppingListId,
+              actorUserId: currentUser.id,
+              item: result.value,
+            },
+          },
+        );
+      }
+
       sendItemResult(result, response);
     }),
   );
@@ -331,6 +434,21 @@ export function createShoppingListRouter(
         itemId,
         request.currentUser as PublicUser,
       );
+
+      if (result.status === "ok") {
+        const currentUser = request.currentUser as PublicUser;
+        realtimeNotifier.notifyUsers(
+          await shoppingListService.notificationRecipientIds(shoppingListId),
+          {
+            name: "item:deleted",
+            payload: {
+              listId: shoppingListId,
+              actorUserId: currentUser.id,
+              itemId,
+            },
+          },
+        );
+      }
 
       sendItemResult(result, response);
     }),

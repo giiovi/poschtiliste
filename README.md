@@ -199,6 +199,14 @@ Every card carries a status chip: `Offen`, `Überfällig` (due date in the past
 and not completed) or `Abgeschlossen`. The layout is fluid and usable down to a
 viewport width of 320px.
 
+## Mobile shopping-list detail
+
+Select a list title on the dashboard to open its detail view. The view loads
+the current items and lets assigned users add, edit, purchase, unpurchase and
+delete them without reloading the page. Item checkboxes and action buttons use
+mobile-friendly touch targets, and the layout changes to full-width controls on
+small screens.
+
 ## Create and edit shopping lists
 
 `Neue Liste` on the dashboard opens `/lists/new`, `Bearbeiten` on a card opens
@@ -227,6 +235,27 @@ to all connections of one user.
 The frontend connects after login and disconnects on logout
 (`frontend/src/realtime/socket.ts`). In development the Vite proxy forwards
 `/socket.io` including WebSockets to the backend.
+
+Successful list and item mutations emit the following events to the responsible
+user and all assigned users. Users who are not related to the list do not
+receive them. Every payload includes `listId` and `actorUserId`.
+
+| Event           | Additional payload                                                 | Emitted after                              |
+| --------------- | ------------------------------------------------------------------ | ------------------------------------------ |
+| `list:assigned` | `assignedUserId`                                                   | a user is assigned                         |
+| `list:updated`  | `change`: `created`, `updated`, `deleted`, or `assignment-removed` | a list or its assignments change           |
+| `item:added`    | complete `item`                                                    | an item is created                         |
+| `item:updated`  | complete `item`                                                    | an item is edited or purchased/unpurchased |
+| `item:deleted`  | `itemId`                                                           | an item is deleted                         |
+
+When responsibility or an assignment is removed, the previous recipients also
+receive the final `list:updated` event so their frontend can remove or refresh
+the list.
+
+The frontend shows incoming events as a non-blocking toast for four seconds.
+The dashboard refreshes its cards in the background, while an open list detail
+applies item additions, updates and deletions directly without a page reload.
+Events for other list ids are ignored by the detail view.
 
 ## User administration
 

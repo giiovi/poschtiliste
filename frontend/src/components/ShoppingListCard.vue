@@ -52,7 +52,14 @@ const formattedDueDate = computed(() => {
 <template>
   <article class="list-card" :class="`list-card--${status.modifier}`">
     <div class="list-card__header">
-      <h3 class="list-card__title">{{ list.title }}</h3>
+      <h3 class="list-card__title">
+        <RouterLink
+          :to="{ name: 'list-detail', params: { id: list.id } }"
+          class="list-card__open"
+        >
+          {{ list.title }}
+        </RouterLink>
+      </h3>
       <span class="list-card__status label">{{ status.label }}</span>
     </div>
     <div class="list-card__footer">
@@ -107,6 +114,21 @@ const formattedDueDate = computed(() => {
   color: #173e2b;
   font-size: 1.15rem;
   font-weight: 650;
+}
+
+.list-card__open {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.list-card__open:hover {
+  color: #24623a;
+}
+
+.list-card__open:focus-visible {
+  outline: 3px solid #3e9b5b;
+  outline-offset: 3px;
 }
 
 .list-card--completed .list-card__title {
