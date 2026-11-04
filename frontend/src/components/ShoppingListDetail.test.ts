@@ -2,6 +2,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { ShoppingItem } from "../types/shopping-item";
+import type { RealtimeEvent } from "../realtime/events";
 import type { ShoppingListDetail as ShoppingListDetailType } from "../types/shopping-list";
 import ShoppingListDetail from "./ShoppingListDetail.vue";
 
@@ -13,6 +14,11 @@ const api = vi.hoisted(() => ({
   deleteShoppingItem: vi.fn(),
 }));
 
+const realtime = vi.hoisted(() => ({
+  listener: undefined as ((event: RealtimeEvent) => void) | undefined,
+  subscribeRealtime: vi.fn(),
+}));
+
 vi.mock("../api/shopping-lists", () => ({
   fetchShoppingList: api.fetchShoppingList,
 }));
@@ -22,6 +28,10 @@ vi.mock("../api/shopping-items", () => ({
   createShoppingItem: api.createShoppingItem,
   updateShoppingItem: api.updateShoppingItem,
   deleteShoppingItem: api.deleteShoppingItem,
+}));
+
+vi.mock("../realtime/socket", () => ({
+  subscribeRealtime: realtime.subscribeRealtime,
 }));
 
 const list: ShoppingListDetailType = {
@@ -68,6 +78,10 @@ describe("ShoppingListDetail", () => {
     vi.resetAllMocks();
     api.fetchShoppingList.mockResolvedValue(list);
     api.fetchShoppingItems.mockResolvedValue([milk, bread]);
+    realtime.subscribeRealtime.mockImplementation((listener) => {
+      realtime.listener = listener;
+      return vi.fn();
+    });
   });
 
   test("shows all items and their purchased state", async () => {
@@ -157,5 +171,59 @@ describe("ShoppingListDetail", () => {
     expect(api.deleteShoppingItem).toHaveBeenCalledWith(7, 4);
     expect(wrapper.find('[data-testid="item-4"]').exists()).toBe(false);
     expect(api.fetchShoppingItems).toHaveBeenCalledTimes(1);
+  });
+
+  test("applies realtime item events for the current list only", async () => {
+    const wrapper = await mountDetail();
+    const apples: ShoppingItem = { ...milk, id: 6, name: "Apples" };
+
+    realtime.listener?.({
+      name: "item:added",
+      payload: { listId: 7, actorUserId: 3, item: apples },
+    });
+    realtime.listener?.({
+      name: "item:updated",
+      payload: {
+        listId: 7,
+        actorUserId: 3,
+        item: { ...milk, purchased: true },
+      },
+    });
+    realtime.listener?.({
+      name: "item:deleted",
+      payload: { listId: 7, actorUserId: 3, itemId: bread.id },
+    });
+    realtime.listener?.({
+      name: "item:added",
+      payload: {
+        listId: 99,
+        actorUserId: 3,
+        item: { ...apples, id: 99, shopping_list_id: 99 },
+      },
+    });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="item-6"]').exists()).toBe(true);
+    expect(wrapper.get('[data-testid="item-4"]').classes()).toContain(
+      "item-row--purchased",
+    );
+    expect(wrapper.find('[data-testid="item-5"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="item-99"]').exists()).toBe(false);
+    expect(api.fetchShoppingItems).toHaveBeenCalledTimes(1);
+  });
+
+  test("removes a deleted list from the open detail view", async () => {
+    const wrapper = await mountDetail();
+
+    realtime.listener?.({
+      name: "list:updated",
+      payload: { listId: 7, actorUserId: 3, change: "deleted" },
+    });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain(
+      "Diese Liste gibt es nicht oder du hast keinen Zugriff darauf.",
+    );
+    expect(wrapper.find('[data-testid="item-4"]').exists()).toBe(false);
   });
 });
