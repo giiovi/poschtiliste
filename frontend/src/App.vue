@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { RouterView, useRouter } from "vue-router";
+import { RouterLink, RouterView, useRouter } from "vue-router";
 
 import { authSession } from "./auth/session";
 
@@ -29,6 +29,13 @@ async function logout(): Promise<void> {
       <p class="label app-bar__eyebrow">Gemeinsam einkaufen</p>
       <h1 class="app-bar__title">Poschtilischte</h1>
       <div v-if="authSession.currentUser.value" class="app-bar__session">
+        <RouterLink
+          v-if="authSession.currentUser.value.role === 'admin'"
+          :to="{ name: 'admin-users' }"
+          class="app-bar__link"
+        >
+          Benutzer
+        </RouterLink>
         <span>{{ authSession.currentUser.value.username }}</span>
         <button type="button" :disabled="loggingOut" @click="logout">
           {{ loggingOut ? "Abmelden …" : "Abmelden" }}
@@ -81,6 +88,14 @@ async function logout(): Promise<void> {
   gap: 12px;
   align-items: center;
   color: #506158;
+}
+
+.app-bar__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  color: #24623a;
+  font-weight: 650;
 }
 
 .app-bar__session button {
