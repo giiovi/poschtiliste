@@ -228,6 +228,16 @@ The frontend connects after login and disconnects on logout
 (`frontend/src/realtime/socket.ts`). In development the Vite proxy forwards
 `/socket.io` including WebSockets to the backend.
 
+## User administration
+
+Administrators see a `Benutzer` link in the app bar that opens `/admin/users`.
+The route guard sends everyone else back to the dashboard, and the link is
+hidden for them. The page lists all users and lets an administrator create,
+edit (username, role), delete and reset the password of a user, using the
+`/api/admin/users` endpoints. The own account cannot be deleted and its role
+cannot be changed. Backend errors are translated to German messages in
+`frontend/src/api/admin-users.ts`.
+
 ## Login API
 
 `POST /api/auth/login` accepts a JSON body containing `username` and `password`.
