@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type RequestHandler } from "express";
 
 import { createDatabase, type Database } from "./db/database";
 import { errorHandler } from "./middleware/error-handler";
@@ -18,6 +18,7 @@ import { createSessionMiddleware } from "./session";
 interface CreateAppOptions {
   database?: Database;
   environment?: NodeJS.ProcessEnv;
+  sessionMiddleware?: RequestHandler;
 }
 
 export function createApp(options: CreateAppOptions = {}): Express {
@@ -30,7 +31,7 @@ export function createApp(options: CreateAppOptions = {}): Express {
   const shoppingItemService = createShoppingItemService(database);
   const requireAuth = createRequireAuth(userService);
   app.use(express.json());
-  app.use(createSessionMiddleware(environment));
+  app.use(options.sessionMiddleware ?? createSessionMiddleware(environment));
 
   app.use("/api/health", createHealthRouter());
   app.use("/api/auth", createAuthRouter(authService, requireAuth));
