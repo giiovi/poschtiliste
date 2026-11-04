@@ -5,6 +5,26 @@ import { Server } from "socket.io";
 
 import type { UserService } from "../services/user-service";
 import type { PublicUser } from "../types/user";
+import type { RealtimeEvent } from "./realtime-notifier";
+import { RealtimeNotifier } from "./realtime-notifier";
+
+interface ServerToClientEvents {
+  "list:assigned": (
+    payload: Extract<RealtimeEvent, { name: "list:assigned" }>["payload"],
+  ) => void;
+  "list:updated": (
+    payload: Extract<RealtimeEvent, { name: "list:updated" }>["payload"],
+  ) => void;
+  "item:added": (
+    payload: Extract<RealtimeEvent, { name: "item:added" }>["payload"],
+  ) => void;
+  "item:updated": (
+    payload: Extract<RealtimeEvent, { name: "item:updated" }>["payload"],
+  ) => void;
+  "item:deleted": (
+    payload: Extract<RealtimeEvent, { name: "item:deleted" }>["payload"],
+  ) => void;
+}
 
 export interface SocketData {
   user: PublicUser;
@@ -12,7 +32,7 @@ export interface SocketData {
 
 export type SocketServer = Server<
   Record<string, never>,
-  Record<string, never>,
+  ServerToClientEvents,
   Record<string, never>,
   SocketData
 >;
@@ -20,6 +40,7 @@ export type SocketServer = Server<
 interface SocketServerOptions {
   sessionMiddleware: RequestHandler;
   userService: UserService;
+  notifier?: RealtimeNotifier;
 }
 
 export function userRoom(userId: number): string {
@@ -28,7 +49,7 @@ export function userRoom(userId: number): string {
 
 export function createSocketServer(
   httpServer: HttpServer,
-  { sessionMiddleware, userService }: SocketServerOptions,
+  { sessionMiddleware, userService, notifier }: SocketServerOptions,
 ): SocketServer {
   const io: SocketServer = new Server(httpServer);
 
@@ -55,6 +76,28 @@ export function createSocketServer(
 
   io.on("connection", async (socket) => {
     await socket.join(userRoom(socket.data.user.id));
+  });
+
+  notifier?.subscribe(({ userIds, event }) => {
+    const rooms = userIds.map(userRoom);
+
+    switch (event.name) {
+      case "list:assigned":
+        io.to(rooms).emit(event.name, event.payload);
+        break;
+      case "list:updated":
+        io.to(rooms).emit(event.name, event.payload);
+        break;
+      case "item:added":
+        io.to(rooms).emit(event.name, event.payload);
+        break;
+      case "item:updated":
+        io.to(rooms).emit(event.name, event.payload);
+        break;
+      case "item:deleted":
+        io.to(rooms).emit(event.name, event.payload);
+        break;
+    }
   });
 
   return io;

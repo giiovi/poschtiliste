@@ -37,6 +37,7 @@ export interface ShoppingListService {
     user: PublicUser,
   ): Promise<number[]>;
   removeAssignment(id: number, userId: number, user: PublicUser): Promise<void>;
+  notificationRecipientIds(id: number): Promise<number[]>;
 }
 
 interface ShoppingListRow extends Omit<ShoppingList, "completed"> {
@@ -102,6 +103,22 @@ export function createShoppingListService(
   database: Database,
 ): ShoppingListService {
   return {
+    async notificationRecipientIds(id: number): Promise<number[]> {
+      const rows = await database.all<{ user_id: number }>(
+        `SELECT responsible_user_id AS user_id
+         FROM shopping_lists
+         WHERE id = ?
+         UNION
+         SELECT user_id
+         FROM list_assignments
+         WHERE shopping_list_id = ?
+         ORDER BY user_id`,
+        [id, id],
+      );
+
+      return rows.map((row) => row.user_id);
+    },
+
     async listForUser(user: PublicUser): Promise<ShoppingList[]> {
       const rows =
         user.role === "admin"
