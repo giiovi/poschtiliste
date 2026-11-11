@@ -10,12 +10,35 @@ Teil der Poschtilischte-API.
 
 ## Setup
 
+Prepare a fresh clone with a single command:
+
+```shell
+$ npm run setup
+```
+
+`scripts/dev-setup.mjs` runs these steps and stops at the first error:
+
+1. `npm install` installs the backend and frontend dependencies (npm
+   workspaces) and activates the Husky Git hooks.
+2. `.env` is created from `.env.example`. An existing `.env` is kept.
+3. `npm run db:migrate` and `npm run db:seed` create the development database
+   in `backend/data/` and fill it with the seed users and lists.
+4. If Docker is running, `docker compose up --detach --build` builds the
+   `poschtiliste-webapp` image from `docker/webapp/Dockerfile` and starts the
+   container on port 3000. If Docker is not running, this step is skipped with
+   a hint. Use `npm run setup -- --no-docker` to skip it on purpose.
+
+The script can be run again at any time. The repository has no CI environment
+such as Jenkins yet, so the setup does not start one.
+
+Stop the container with `docker compose down`. It uses port 3000, so stop it
+before starting the backend locally with `npm run dev`.
+
+The individual steps can still be run by hand, starting with:
+
 ```shell
 $ npm install
 ```
-
-The repository uses npm workspaces. This command installs both backend and
-frontend dependencies.
 
 ## Environment configuration
 

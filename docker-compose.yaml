@@ -1,0 +1,15 @@
+services:
+  webapp:
+    build:
+      context: .
+      dockerfile: docker/webapp/Dockerfile
+    image: poschtiliste-webapp
+    container_name: poschtiliste-webapp
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      # keep the linux dependencies inside the container, separate from the host
+      - /app/node_modules
+      - /app/backend/node_modules
+      - /app/frontend/node_modules
