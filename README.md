@@ -335,6 +335,24 @@ list service into SQLite. The test then queries the `shopping_lists` table
 directly with Knex and verifies that the submitted title, due date and
 responsible user were actually persisted.
 
+`api-crud.integration.test.ts` runs the complete application from `createApp`
+against a separate, file-based SQLite test database. The helper
+`backend/tests/helpers/integration-database.ts` sets up the database like this:
+
+1. It creates a temporary directory and points `TEST_DATABASE_CLIENT` and
+   `TEST_DATABASE_FILENAME` at a new file in it, so the Knex `test`
+   environment is used and the development database is never touched.
+2. Before every test it rolls back all migrations, applies them again with
+   `migrate.latest()` and runs the development seed, so each test starts from
+   the same known state.
+3. After the suite it closes the connection and deletes the temporary
+   directory, so no state is left behind.
+
+The tests log in with the seeded users through `POST /api/auth/login`, cover
+login, `/me` and logout, and create, read, update and delete lists and items
+over HTTP. After each write they read the affected rows directly with Knex to
+verify that the data was stored correctly.
+
 For the file-based test database used by manual Knex commands, first copy
 `.env.example` to `.env`, then apply its migrations:
 
