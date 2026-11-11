@@ -1,4 +1,7 @@
-import { createKnexConfig } from "../src/db/knex-config";
+import {
+  createKnexConfig,
+  createKnexEnvironmentConfig,
+} from "../src/db/knex-config";
 
 const environment: NodeJS.ProcessEnv = {
   DATABASE_CLIENT: "sqlite3",
@@ -37,5 +40,17 @@ describe("Knex configuration", () => {
         TEST_DATABASE_FILENAME: "",
       }),
     ).toThrow("Missing required environment variable: TEST_DATABASE_FILENAME");
+  });
+
+  test("creates a production database config without test variables", () => {
+    expect(
+      createKnexEnvironmentConfig(
+        {
+          DATABASE_CLIENT: "sqlite3",
+          DATABASE_FILENAME: "/data/poschtiliste.sqlite",
+        },
+        "development",
+      ).connection,
+    ).toEqual({ filename: "/data/poschtiliste.sqlite" });
   });
 });

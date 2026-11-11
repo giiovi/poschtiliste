@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import express, { type Express, type RequestHandler } from "express";
 
 import { createDatabase, type Database } from "./db/database";
@@ -21,6 +23,39 @@ interface CreateAppOptions {
   environment?: NodeJS.ProcessEnv;
   sessionMiddleware?: RequestHandler;
   realtimeNotifier?: RealtimeNotifier;
+}
+
+function serveProductionFrontend(
+  app: Express,
+  environment: NodeJS.ProcessEnv,
+): void {
+  if (environment.NODE_ENV !== "production") {
+    return;
+  }
+
+  const frontendDirectory =
+    environment.FRONTEND_DIST_DIR?.trim() ||
+    path.resolve(process.cwd(), "frontend/dist");
+
+  app.use(express.static(frontendDirectory));
+  app.use((request, response, next) => {
+    const isBackendPath =
+      request.path === "/api" ||
+      request.path.startsWith("/api/") ||
+      request.path === "/socket.io" ||
+      request.path.startsWith("/socket.io/");
+
+    if (request.method !== "GET" || isBackendPath) {
+      next();
+      return;
+    }
+
+    response.sendFile(path.join(frontendDirectory, "index.html"), (error) => {
+      if (error) {
+        next(error);
+      }
+    });
+  });
 }
 
 export function createApp(options: CreateAppOptions = {}): Express {
@@ -51,6 +86,7 @@ export function createApp(options: CreateAppOptions = {}): Express {
     "/api/admin/users",
     createAdminUserRouter(createAdminUserService(database), requireAuth),
   );
+  serveProductionFrontend(app, environment);
   app.use(errorHandler);
 
   return app;
