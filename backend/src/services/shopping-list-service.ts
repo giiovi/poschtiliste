@@ -1,5 +1,6 @@
 import type { Knex } from "knex";
 
+import { hasShoppingListAccess } from "../authorization/shopping-list-access";
 import type { Database } from "../db/database";
 import {
   ConflictError,
@@ -86,7 +87,7 @@ async function assertAccess(
     throw new NotFoundError("Shopping list not found");
   }
 
-  if (user.role === "admin" || row.responsible_user_id === user.id) {
+  if (hasShoppingListAccess(user, row.responsible_user_id, false)) {
     return;
   }
 
@@ -94,7 +95,9 @@ async function assertAccess(
     .where({ shopping_list_id: id, user_id: user.id })
     .first();
 
-  if (!assignment) {
+  if (
+    !hasShoppingListAccess(user, row.responsible_user_id, Boolean(assignment))
+  ) {
     throw new ForbiddenError("No access to this shopping list");
   }
 }

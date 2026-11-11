@@ -304,6 +304,16 @@ $ npm run test:frontend
 The frontend tests cover session restoration through `/me`, login failures,
 logout, and redirects between public and protected routes.
 
+Run the focused authorization suite with enforced 100% branch, function, line
+and statement coverage for the authentication and list-access functions:
+
+```shell
+$ npm run test:authorization
+```
+
+This suite covers unauthenticated and deleted-user sessions, normal users,
+administrators, responsible users, assigned users and unrelated users.
+
 ### Integration-test database
 
 Run the database integration tests separately with:

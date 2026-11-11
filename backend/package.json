@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/src/server.js",
     "test": "jest",
+    "test:authorization": "jest --config jest.authorization.config.cjs --runInBand",
     "test:integration": "jest --runInBand --testPathPatterns=integration",
     "lint": "eslint .",
     "db:migrate": "knex migrate:latest --knexfile knexfile.ts",
