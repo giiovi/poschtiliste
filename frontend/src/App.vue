@@ -3,6 +3,7 @@ import { ref, watch } from "vue";
 import { RouterLink, RouterView, useRouter } from "vue-router";
 
 import { authSession } from "./auth/session";
+import RealtimeNotificationToast from "./components/RealtimeNotificationToast.vue";
 import { connectRealtime, disconnectRealtime } from "./realtime/socket";
 
 const router = useRouter();
@@ -63,6 +64,7 @@ async function logout(): Promise<void> {
       </p>
       <RouterView />
     </main>
+    <RealtimeNotificationToast />
   </div>
 </template>
 

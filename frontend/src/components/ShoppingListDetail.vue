@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 
 import { ApiError, UnauthenticatedError } from "../api/http";
@@ -10,6 +10,8 @@ import {
   updateShoppingItem,
 } from "../api/shopping-items";
 import { fetchShoppingList } from "../api/shopping-lists";
+import type { RealtimeEvent } from "../realtime/events";
+import { subscribeRealtime } from "../realtime/socket";
 import type { ShoppingItem } from "../types/shopping-item";
 import type { ShoppingListDetail } from "../types/shopping-list";
 
@@ -29,6 +31,7 @@ const editingItemId = ref<number | null>(null);
 const editName = ref("");
 const editQuantity = ref(1);
 const actionError = ref("");
+let unsubscribeRealtime: (() => void) | undefined;
 
 const purchasedCount = computed(
   () => items.value.filter((item) => item.purchased).length,
@@ -51,8 +54,54 @@ function replaceItem(updatedItem: ShoppingItem): void {
   }
 }
 
-async function load(): Promise<void> {
-  state.value = "loading";
+function addOrReplaceItem(item: ShoppingItem): void {
+  const existingIndex = items.value.findIndex(
+    (candidate) => candidate.id === item.id,
+  );
+
+  if (existingIndex === -1) {
+    items.value.push(item);
+  } else {
+    items.value[existingIndex] = item;
+  }
+}
+
+function handleRealtime(event: RealtimeEvent): void {
+  if (event.payload.listId !== props.listId) {
+    return;
+  }
+
+  switch (event.name) {
+    case "item:added":
+    case "item:updated":
+      addOrReplaceItem(event.payload.item);
+      break;
+    case "item:deleted":
+      items.value = items.value.filter(
+        (item) => item.id !== event.payload.itemId,
+      );
+      break;
+    case "list:updated":
+      if (event.payload.change === "deleted") {
+        list.value = null;
+        items.value = [];
+        state.value = "unavailable";
+      } else {
+        void load(false, true);
+      }
+      break;
+    case "list:assigned":
+      break;
+  }
+}
+
+async function load(
+  showLoading = true,
+  reflectLostAccess = false,
+): Promise<void> {
+  if (showLoading) {
+    state.value = "loading";
+  }
   actionError.value = "";
 
   try {
@@ -65,6 +114,19 @@ async function load(): Promise<void> {
     state.value = "ready";
   } catch (error) {
     if (handleUnauthenticated(error)) {
+      return;
+    }
+
+    if (!showLoading) {
+      if (
+        reflectLostAccess &&
+        error instanceof ApiError &&
+        [403, 404].includes(error.status)
+      ) {
+        list.value = null;
+        items.value = [];
+        state.value = "unavailable";
+      }
       return;
     }
 
@@ -191,7 +253,12 @@ async function removeItem(item: ShoppingItem): Promise<void> {
   }
 }
 
-onMounted(load);
+onMounted(() => {
+  void load();
+  unsubscribeRealtime = subscribeRealtime(handleRealtime);
+});
+
+onUnmounted(() => unsubscribeRealtime?.());
 </script>
 
 <template>
@@ -215,7 +282,7 @@ onMounted(load);
 
     <div v-else-if="state === 'error'" class="list-detail__notice">
       <p>Die Einkaufsliste konnte nicht geladen werden.</p>
-      <button type="button" class="list-detail__secondary" @click="load">
+      <button type="button" class="list-detail__secondary" @click="load()">
         Erneut versuchen
       </button>
     </div>
