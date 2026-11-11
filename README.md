@@ -38,6 +38,32 @@ The development and test databases use separate environment variables:
 No database connection parameter is hardcoded in the Knex configuration. Copy
 `.env.example` to `.env` before running database commands locally.
 
+## npm command reference
+
+Run these commands from the repository root. The root scripts delegate to the
+backend and frontend packages and propagate failures to the terminal and CI.
+
+| Command                      | Purpose                                              | When to run it                                       |
+| ---------------------------- | ---------------------------------------------------- | ---------------------------------------------------- |
+| `npm install`                | Install all workspace dependencies and Git hooks     | After cloning or changing dependencies               |
+| `npm run dev`                | Start the backend with automatic restarts            | During backend development                           |
+| `npm run dev:frontend`       | Start the Vue development server                     | In a second terminal during frontend development     |
+| `npm run build`              | Compile the backend and build the frontend bundle    | Before a release or production start                 |
+| `npm start`                  | Start the compiled backend                           | After `npm run build` in a production-like setup     |
+| `npm test`                   | Run all backend and frontend tests                   | Before every pull request                            |
+| `npm run test:integration`   | Run API tests against isolated real SQLite databases | After backend or persistence changes                 |
+| `npm run test:authorization` | Run authorization tests with 100% coverage gates     | After authentication or permission changes           |
+| `npm run lint`               | Check backend and frontend source with ESLint        | While developing and before committing               |
+| `npm run format`             | Format supported repository files with Prettier      | After editing or when `format:check` fails           |
+| `npm run format:check`       | Verify formatting without modifying files            | Before committing and in CI                          |
+| `npm run check`              | Run lint and the formatting check together           | Before every pull request                            |
+| `npm run db:migrate`         | Apply pending development-database migrations        | After setup and after schema changes                 |
+| `npm run db:seed`            | Load reproducible development data                   | After migrations when sample data is needed          |
+| `npm run db:rollback`        | Roll back all development-database migrations        | When resetting or validating migration reversibility |
+
+Append `-- --env test` to a database command to target the separate test
+database, for example `npm run db:migrate -- --env test`.
+
 ## Database migrations
 
 Apply all pending migrations to the development database:
