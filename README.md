@@ -236,6 +236,22 @@ The frontend connects after login and disconnects on logout
 (`frontend/src/realtime/socket.ts`). In development the Vite proxy forwards
 `/socket.io` including WebSockets to the backend.
 
+Successful list and item mutations emit the following events to the responsible
+user and all assigned users. Users who are not related to the list do not
+receive them. Every payload includes `listId` and `actorUserId`.
+
+| Event           | Additional payload                                                 | Emitted after                              |
+| --------------- | ------------------------------------------------------------------ | ------------------------------------------ |
+| `list:assigned` | `assignedUserId`                                                   | a user is assigned                         |
+| `list:updated`  | `change`: `created`, `updated`, `deleted`, or `assignment-removed` | a list or its assignments change           |
+| `item:added`    | complete `item`                                                    | an item is created                         |
+| `item:updated`  | complete `item`                                                    | an item is edited or purchased/unpurchased |
+| `item:deleted`  | `itemId`                                                           | an item is deleted                         |
+
+When responsibility or an assignment is removed, the previous recipients also
+receive the final `list:updated` event so their frontend can remove or refresh
+the list.
+
 ## User administration
 
 Administrators see a `Benutzer` link in the app bar that opens `/admin/users`.

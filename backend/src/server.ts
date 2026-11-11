@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import { createApp } from "./app";
 import { createDatabase } from "./db/database";
 import { encodeHTML } from "./library";
+import { RealtimeNotifier } from "./realtime/realtime-notifier";
 import { createSocketServer } from "./realtime/socket-server";
 import { createUserService } from "./services/user-service";
 import { createSessionMiddleware } from "./session";
@@ -22,11 +23,15 @@ const port = Number(process.env.PORT ?? 3000);
 const database = createDatabase(process.env);
 // http and socket.io share one session store
 const sessionMiddleware = createSessionMiddleware(process.env);
-const httpServer = createServer(createApp({ database, sessionMiddleware }));
+const realtimeNotifier = new RealtimeNotifier();
+const httpServer = createServer(
+  createApp({ database, sessionMiddleware, realtimeNotifier }),
+);
 
 createSocketServer(httpServer, {
   sessionMiddleware,
   userService: createUserService(database),
+  notifier: realtimeNotifier,
 });
 
 httpServer.listen(port, () => {

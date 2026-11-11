@@ -7,6 +7,7 @@ import request from "supertest";
 import { wrapConnection } from "../../src/db/database";
 import { errorHandler } from "../../src/middleware/error-handler";
 import { createRequireAuth } from "../../src/middleware/require-auth";
+import { RealtimeNotifier } from "../../src/realtime/realtime-notifier";
 import { createAdminUserRouter } from "../../src/routes/admin-user-routes";
 import { createShoppingListRouter } from "../../src/routes/shopping-list-routes";
 import { createUserRouter } from "../../src/routes/user-routes";
@@ -29,7 +30,9 @@ export interface TestContext {
   userService: UserService;
 }
 
-export async function createTestContext(): Promise<TestContext> {
+export async function createTestContext(
+  realtimeNotifier?: RealtimeNotifier,
+): Promise<TestContext> {
   const connection = knex({
     client: "sqlite3",
     connection: { filename: ":memory:" },
@@ -65,6 +68,7 @@ export async function createTestContext(): Promise<TestContext> {
       createShoppingListService(database),
       createShoppingItemService(database),
       requireAuth,
+      realtimeNotifier,
     ),
   );
   app.use("/api/users", createUserRouter(userService, requireAuth));
