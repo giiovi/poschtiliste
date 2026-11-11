@@ -118,6 +118,24 @@ describe("ShoppingListDetail", () => {
     expect(api.fetchShoppingItems).toHaveBeenCalledTimes(1);
   });
 
+  test("shows an added item once when its realtime event arrives first", async () => {
+    const apples: ShoppingItem = { ...milk, id: 6, name: "Apples" };
+    api.createShoppingItem.mockImplementation(async () => {
+      realtime.listener?.({
+        name: "item:added",
+        payload: { listId: 7, actorUserId: 2, item: apples },
+      });
+      return apples;
+    });
+    const wrapper = await mountDetail();
+
+    await wrapper.get('input[name="newItemName"]').setValue("Apples");
+    await wrapper.get("form.add-item").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.findAll('[data-testid="item-6"]')).toHaveLength(1);
+  });
+
   test("updates the purchased state without reloading", async () => {
     api.updateShoppingItem.mockResolvedValue({ ...milk, purchased: true });
     const wrapper = await mountDetail();
