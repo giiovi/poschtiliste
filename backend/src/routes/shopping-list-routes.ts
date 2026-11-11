@@ -11,20 +11,13 @@ import type { ShoppingListService } from "../services/shopping-list-service";
 import type { ShoppingItem } from "../types/shopping-item";
 import type { PublicUser } from "../types/user";
 import {
+  validateShoppingItemCreate,
+  validateShoppingItemUpdate,
+} from "../validation/shopping-item-validation";
+import {
   validateShoppingListInput,
   validateShoppingListUpdate,
 } from "../validation/shopping-list-validation";
-
-interface CreateShoppingItemBody {
-  name: string;
-  quantity: number;
-}
-
-interface UpdateShoppingItemBody {
-  name?: string;
-  quantity?: number;
-  purchased?: boolean;
-}
 
 function parseId(value: unknown, name: string): number {
   const id = Number(value);
@@ -47,67 +40,6 @@ function parsePositiveId(value: string | string[]): number | null {
 
   const id = Number(value);
   return Number.isSafeInteger(id) && id > 0 ? id : null;
-}
-
-function parseCreateItemBody(value: unknown): CreateShoppingItemBody | null {
-  if (typeof value !== "object" || value === null) {
-    return null;
-  }
-
-  const body = value as Record<string, unknown>;
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  const quantity = body.quantity ?? 1;
-
-  if (
-    name.length === 0 ||
-    name.length > 255 ||
-    !Number.isSafeInteger(quantity) ||
-    (quantity as number) <= 0
-  ) {
-    return null;
-  }
-
-  return { name, quantity: quantity as number };
-}
-
-function parseUpdateItemBody(value: unknown): UpdateShoppingItemBody | null {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return null;
-  }
-
-  const body = value as Record<string, unknown>;
-  const update: UpdateShoppingItemBody = {};
-
-  if ("name" in body) {
-    if (typeof body.name !== "string") {
-      return null;
-    }
-
-    const name = body.name.trim();
-    if (name.length === 0 || name.length > 255) {
-      return null;
-    }
-    update.name = name;
-  }
-
-  if ("quantity" in body) {
-    if (
-      !Number.isSafeInteger(body.quantity) ||
-      (body.quantity as number) <= 0
-    ) {
-      return null;
-    }
-    update.quantity = body.quantity as number;
-  }
-
-  if ("purchased" in body) {
-    if (typeof body.purchased !== "boolean") {
-      return null;
-    }
-    update.purchased = body.purchased;
-  }
-
-  return Object.keys(update).length > 0 ? update : null;
 }
 
 function sendItemResult(
@@ -327,7 +259,7 @@ export function createShoppingListRouter(
     "/:id/items",
     asyncHandler(async (request, response) => {
       const shoppingListId = parsePositiveId(request.params.id);
-      const body = parseCreateItemBody(request.body);
+      const body = validateShoppingItemCreate(request.body);
 
       if (shoppingListId === null) {
         response.status(400).json({ error: "Invalid shopping list id" });
@@ -370,7 +302,7 @@ export function createShoppingListRouter(
     asyncHandler(async (request, response) => {
       const shoppingListId = parsePositiveId(request.params.id);
       const shoppingItemId = parsePositiveId(request.params.itemId);
-      const body = parseUpdateItemBody(request.body);
+      const body = validateShoppingItemUpdate(request.body);
 
       if (shoppingListId === null) {
         response.status(400).json({ error: "Invalid shopping list id" });
