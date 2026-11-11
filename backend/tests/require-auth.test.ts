@@ -74,10 +74,14 @@ async function run(
 describe("requireAuth middleware", () => {
   const requireAuth = createRequireAuth(createUserService([alice]));
 
-  test("rejects requests without a session user with 401", async () => {
-    const { response, nextCalled } = await run(requireAuth, {
-      session: {},
-    } as unknown as Request);
+  test.each([
+    ["a session", {}],
+    ["a session user", { session: {} }],
+  ])("rejects requests without %s with 401", async (_case, request) => {
+    const { response, nextCalled } = await run(
+      requireAuth,
+      request as unknown as Request,
+    );
 
     expect(nextCalled).toBe(false);
     expect(response.statusCode).toBe(401);

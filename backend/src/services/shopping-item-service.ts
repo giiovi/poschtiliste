@@ -1,3 +1,4 @@
+import { hasShoppingListAccess } from "../authorization/shopping-list-access";
 import type { Database } from "../db/database";
 import type { PublicUser } from "../types/user";
 import type { ShoppingItem } from "../types/shopping-item";
@@ -53,30 +54,37 @@ async function checkListAccess(
   shoppingListId: number,
   user: PublicUser,
 ): Promise<"allowed" | "forbidden" | "not-found"> {
-  const lists = await database.all<{ id: number }>(
-    "SELECT id FROM shopping_lists WHERE id = ?",
-    [shoppingListId],
-  );
+  const lists = await database.all<{
+    id: number;
+    responsible_user_id: number;
+  }>("SELECT id, responsible_user_id FROM shopping_lists WHERE id = ?", [
+    shoppingListId,
+  ]);
 
-  if (!lists[0]) {
+  const list = lists[0];
+
+  if (!list) {
     return "not-found";
   }
 
-  if (user.role === "admin") {
+  if (hasShoppingListAccess(user, list.responsible_user_id, false)) {
     return "allowed";
   }
 
-  const accessibleLists = await database.all<{ id: number }>(
-    `SELECT DISTINCT shopping_lists.id
-     FROM shopping_lists
-     LEFT JOIN list_assignments
-       ON list_assignments.shopping_list_id = shopping_lists.id
-     WHERE shopping_lists.id = ?
-       AND (shopping_lists.responsible_user_id = ? OR list_assignments.user_id = ?)`,
-    [shoppingListId, user.id, user.id],
+  const assignments = await database.all<{ user_id: number }>(
+    `SELECT user_id
+     FROM list_assignments
+     WHERE shopping_list_id = ? AND user_id = ?`,
+    [shoppingListId, user.id],
   );
 
-  return accessibleLists[0] ? "allowed" : "forbidden";
+  return hasShoppingListAccess(
+    user,
+    list.responsible_user_id,
+    Boolean(assignments[0]),
+  )
+    ? "allowed"
+    : "forbidden";
 }
 
 export function createShoppingItemService(
