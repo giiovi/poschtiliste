@@ -1,6 +1,6 @@
 import knex, { type Knex } from "knex";
 
-import { createKnexConfig } from "./knex-config";
+import { createKnexEnvironmentConfig } from "./knex-config";
 
 export interface Database {
   // knex instance for query building and transactions
@@ -29,6 +29,6 @@ export function createDatabase(
     environment.NODE_ENV === "test" ? "test" : "development";
 
   return wrapConnection(
-    knex(createKnexConfig(environment)[databaseEnvironment]),
+    knex(createKnexEnvironmentConfig(environment, databaseEnvironment)),
   );
 }
