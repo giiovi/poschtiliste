@@ -62,6 +62,11 @@ The development and test databases use separate environment variables:
 | Development | `DATABASE_CLIENT`      | `DATABASE_FILENAME`      |
 | Test        | `TEST_DATABASE_CLIENT` | `TEST_DATABASE_FILENAME` |
 
+With `DATABASE_CLIENT=pg` Knex connects to PostgreSQL instead of a SQLite file
+and reads `DATABASE_HOST`, `DATABASE_PORT` (optional, default `5432`),
+`DATABASE_NAME`, `DATABASE_USER` and `DATABASE_PASSWORD`. The test environment
+uses the same names with the `TEST_` prefix.
+
 No database connection parameter is hardcoded in the Knex configuration. Copy
 `.env.example` to `.env` before running database commands locally.
 
@@ -394,8 +399,10 @@ $ docker load --input poschtiliste-0.1.0.tar
 
 ## Docker Compose environment
 
-`docker-compose.yml` builds the production image and starts the application
-together with its SQLite database in a persistent volume:
+`docker-compose.yml` builds the production image and starts two containers:
+`webapp` (the application) and `database` (PostgreSQL 18). The application
+waits until the database container is healthy and connects to it through Knex.
+The data is stored in a persistent volume:
 
 ```shell
 $ cp .env.example .env
@@ -405,27 +412,38 @@ $ curl http://localhost:3000/api/health
 ```
 
 Compose reads the variables below from `.env` or the shell and passes them to
-the container as environment variables. Secrets are neither stored in the image
+the containers as environment variables. Secrets are neither stored in the image
 nor in `docker-compose.yml`.
 
-| Variable                | Default             | Purpose                                                     |
-| ----------------------- | ------------------- | ----------------------------------------------------------- |
-| `SESSION_SECRET`        | none, required      | Signs the session cookie. Use a long random value.          |
-| `SESSION_COOKIE_SECURE` | `false`             | Set to `true` when the application is served through HTTPS. |
-| `APP_PORT`              | `3000`              | Host port that is published to port 3000 of the container.  |
-| `DATA_VOLUME`           | `poschtiliste-data` | Named volume or host path that is mounted to `/data`.       |
+| Variable                | Default                 | Purpose                                                         |
+| ----------------------- | ----------------------- | --------------------------------------------------------------- |
+| `SESSION_SECRET`        | none, required          | Signs the session cookie. Use a long random value.              |
+| `SESSION_COOKIE_SECURE` | `false`                 | Set to `true` when the application is served through HTTPS.     |
+| `APP_PORT`              | `3000`                  | Host port that is published to port 3000 of the container.      |
+| `POSTGRES_PASSWORD`     | none, required          | Password of the database user. Use a strong random value.       |
+| `POSTGRES_USER`         | `poschtiliste`          | Database user that PostgreSQL creates and the application uses. |
+| `POSTGRES_DB`           | `poschtiliste`          | Database that PostgreSQL creates and the application uses.      |
+| `DATA_VOLUME`           | `poschtiliste-database` | Named volume or host path mounted to `/var/lib/postgresql`.     |
 
-The image fixes `NODE_ENV=production`, `PORT=3000`, `DATABASE_CLIENT=sqlite3`,
-`DATABASE_FILENAME=/data/poschtiliste.sqlite` and
-`FRONTEND_DIST_DIR=/app/frontend/dist` (see
+Compose passes the database values to the application as `DATABASE_CLIENT=pg`,
+`DATABASE_HOST=database`, `DATABASE_PORT=5432`, `DATABASE_NAME`,
+`DATABASE_USER` and `DATABASE_PASSWORD`. The database port is not published to
+the host. `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_DB` only take
+effect when the volume is still empty; PostgreSQL keeps the existing user and
+database afterwards.
+
+The image itself still defaults to SQLite (`DATABASE_CLIENT=sqlite3`,
+`DATABASE_FILENAME=/data/poschtiliste.sqlite`) and fixes `NODE_ENV=production`,
+`PORT=3000` and `FRONTEND_DIST_DIR=/app/frontend/dist` (see
 [Production Docker image](#production-docker-image)).
 
 ### Migrations
 
-On every start the container first applies all pending Knex migrations. The
-server only starts when the migrations succeed; otherwise the container exits
-with an error and `docker compose logs webapp` shows the cause. Migrations can
-also be run manually against the same volume:
+On every start the application container first applies all pending Knex
+migrations to the PostgreSQL database. The server only starts when the
+migrations succeed; otherwise the container exits with an error and
+`docker compose logs webapp` shows the cause. Migrations can also be run
+manually against the same database:
 
 ```shell
 $ docker compose run --rm webapp node backend/dist/src/db/migrate.js
@@ -440,8 +458,9 @@ $ docker compose exec webapp node backend/dist/src/db/seed.js
 
 ### Persistence
 
-The database lives in `/data/poschtiliste.sqlite`. By default this is the named
-volume `poschtiliste-data`, so the data survives container replacement:
+PostgreSQL stores its data in `/var/lib/postgresql` of the `database`
+container. By default this is the named volume `poschtiliste-database`, so the
+data survives container replacement:
 
 ```shell
 $ docker compose down
@@ -455,12 +474,12 @@ to a host path (bind mount). Relative paths are resolved from the repository
 root:
 
 ```shell
-DATA_VOLUME=/srv/poschtiliste/data
+DATA_VOLUME=/srv/poschtiliste/database
 ```
 
-The container runs as the `node` user (UID 1000). On Linux hosts create the
-directory first and make it writable for this user, e.g.
-`sudo mkdir -p /srv/poschtiliste/data && sudo chown 1000:1000 /srv/poschtiliste/data`.
+The PostgreSQL image creates the directory and hands it to its `postgres`
+user on the first start. The data itself lies in the subdirectory
+`18/docker`.
 
 ## Tests
 

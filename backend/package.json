@@ -24,6 +24,7 @@
     "express-session": "^1.19.0",
     "knex": "^3.3.0",
     "nunjucks": "^3.2.4",
+    "pg": "^8.23.1",
     "socket.io": "^4.8.4",
     "sqlite3": "^6.0.1"
   },
@@ -33,6 +34,7 @@
     "@types/express-session": "^1.19.0",
     "@types/jest": "^30.0.0",
     "@types/nunjucks": "^3.2.6",
+    "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
     "jest": "^30.4.2",
     "jest-junit": "^17.0.0",

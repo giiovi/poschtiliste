@@ -6,15 +6,38 @@ services:
     image: poschtiliste:latest
     # the image applies pending migrations and only starts the server if they succeed
     restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
     ports:
       - "${APP_PORT:-3000}:3000"
     environment:
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set in .env}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      DATABASE_CLIENT: pg
+      DATABASE_HOST: database
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-poschtiliste}
+      DATABASE_USER: ${POSTGRES_USER:-poschtiliste}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+
+  database:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-poschtiliste}
+      POSTGRES_USER: ${POSTGRES_USER:-poschtiliste}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+    healthcheck:
+      test:
+        ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
     volumes:
       # named volume by default, a host path in DATA_VOLUME turns it into a bind mount
-      - ${DATA_VOLUME:-poschtiliste-data}:/data
+      - ${DATA_VOLUME:-poschtiliste-database}:/var/lib/postgresql
 
 volumes:
-  poschtiliste-data:
-    name: poschtiliste-data
+  poschtiliste-database:
+    name: poschtiliste-database
