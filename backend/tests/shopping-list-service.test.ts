@@ -40,6 +40,7 @@ function setup(queues: Record<string, unknown[]> = {}): {
       "orderBy",
       "first",
       "insert",
+      "returning",
       "update",
       "delete",
     ]) {
@@ -135,7 +136,7 @@ describe("shopping list service", () => {
   test("creates a list with deduplicated user lookup and assignments", async () => {
     const { calls, service } = setup({
       users: [[{ id: 2 }, { id: 3 }]],
-      shopping_lists: [[7], [listRow]],
+      shopping_lists: [[{ id: 7 }], [listRow]],
     });
 
     const result = await service.create({
@@ -152,6 +153,9 @@ describe("shopping list service", () => {
     expect(findCalls(calls, "shopping_lists", "insert")[0].args).toEqual([
       { title: "Party", due_date: "2030-01-01", responsible_user_id: 2 },
     ]);
+    expect(findCalls(calls, "shopping_lists", "returning")[0].args).toEqual([
+      "id",
+    ]);
     expect(findCalls(calls, "list_assignments", "insert")[0].args).toEqual([
       [
         { shopping_list_id: 7, user_id: 3 },
@@ -164,7 +168,7 @@ describe("shopping list service", () => {
   test("skips the assignment insert without assigned users", async () => {
     const { calls, service } = setup({
       users: [[{ id: 2 }]],
-      shopping_lists: [[7], [listRow]],
+      shopping_lists: [[{ id: 7 }], [listRow]],
     });
 
     await service.create({

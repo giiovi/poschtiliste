@@ -80,11 +80,13 @@ export function createAdminUserService(database: Database): AdminUserService {
       return database.connection.transaction(async (transaction) => {
         await assertUsernameAvailable(transaction, input.username);
 
-        const [id] = await transaction("users").insert({
-          username: input.username,
-          password_hash: passwordHash,
-          role: input.role,
-        });
+        const [{ id }] = await transaction("users")
+          .insert({
+            username: input.username,
+            password_hash: passwordHash,
+            role: input.role,
+          })
+          .returning("id");
 
         return findPublicUser(transaction, id);
       });
