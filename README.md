@@ -713,7 +713,9 @@ These steps are needed once per Jenkins instance:
 The periodic scan works without any inbound connection, so it also covers a
 Jenkins on a developer machine. Each scan asks the GitHub API for the branches
 and pull requests and builds every head whose commit changed since the last
-scan. A push is therefore built at the latest about one minute later.
+scan. A push is therefore built at the latest about one minute later. The scan
+needs the token: without credentials GitHub allows only 60 API requests per
+hour, and Jenkins then delays the scans by several minutes.
 
 A Jenkins that GitHub can reach can be triggered immediately with a webhook.
 Add it in the GitHub repository under Settings → Webhooks with the payload URL
