@@ -9,3 +9,4 @@ MASTER_PROJECT_CONTEXT.md
 !.env.example
 /backend/data/*.sqlite
 .idea/
+/reports/
