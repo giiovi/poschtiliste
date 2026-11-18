@@ -1,0 +1,83 @@
+# jenkins configuration as code, applied on every start. secrets come from environment variables in .env
+jenkins:
+  systemMessage: "Poschtiliste CI, configured by jenkins/casc.yaml"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_ID:-admin}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: "${JENKINS_LOCATION_URL:-http://localhost:8080/}"
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              scope: GLOBAL
+              id: github-token
+              description: GitHub personal access token for the multibranch scan
+              username: "${GITHUB_USERNAME:-}"
+              password: "${GITHUB_TOKEN:-}"
+
+tool:
+  nodejs:
+    installations:
+      - name: node-24
+        home: /opt/node-24
+
+jobs:
+  - script: |
+      multibranchPipelineJob('poschtiliste') {
+        displayName('Poschtiliste')
+        branchSources {
+          branchSource {
+            source {
+              github {
+                id('poschtiliste-github')
+                repoOwner('giiovi')
+                repository('poschtiliste')
+                repositoryUrl('https://github.com/giiovi/poschtiliste')
+                configuredByUrl(true)
+                credentialsId('${GITHUB_CREDENTIALS_ID}')
+                traits {
+                  gitHubBranchDiscovery {
+                    strategyId(1)
+                  }
+                  gitHubPullRequestDiscovery {
+                    strategyId(1)
+                  }
+                  gitHubForkDiscovery {
+                    strategyId(1)
+                    trust {
+                      gitHubTrustPermissions()
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        factory {
+          workflowBranchProjectFactory {
+            scriptPath('Jenkinsfile')
+          }
+        }
+        triggers {
+          periodicFolderTrigger {
+            interval('1m')
+          }
+        }
+        orphanedItemStrategy {
+          discardOldItems {
+            numToKeep(10)
+          }
+        }
+      }

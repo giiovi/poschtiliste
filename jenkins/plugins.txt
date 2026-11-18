@@ -1,0 +1,7 @@
+configuration-as-code:2147.v8a_8d38668c72
+git:5.11.0
+github-branch-source:1986.v801e40614d00
+job-dsl:3752.vb_199526b_20c3
+junit:1458.1460.vd53b_087eeb_2c
+nodejs:1.6.6
+workflow-aggregator:608.v67378e9d3db_1
