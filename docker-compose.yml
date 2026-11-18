@@ -1,0 +1,20 @@
+name: poschtiliste
+
+services:
+  webapp:
+    build: .
+    image: poschtiliste:latest
+    # the image applies pending migrations and only starts the server if they succeed
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set in .env}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+    volumes:
+      # named volume by default, a host path in DATA_VOLUME turns it into a bind mount
+      - ${DATA_VOLUME:-poschtiliste-data}:/data
+
+volumes:
+  poschtiliste-data:
+    name: poschtiliste-data

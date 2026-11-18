@@ -367,6 +367,76 @@ $ docker save --output poschtiliste-0.1.0.tar poschtiliste:0.1.0
 $ docker load --input poschtiliste-0.1.0.tar
 ```
 
+## Docker Compose environment
+
+`docker-compose.yml` builds the production image and starts the application
+together with its SQLite database in a persistent volume:
+
+```shell
+$ cp .env.example .env
+$ docker compose up --detach --build
+$ docker compose ps
+$ curl http://localhost:3000/api/health
+```
+
+Compose reads the variables below from `.env` or the shell and passes them to
+the container as environment variables. Secrets are neither stored in the image
+nor in `docker-compose.yml`.
+
+| Variable                | Default             | Purpose                                                     |
+| ----------------------- | ------------------- | ----------------------------------------------------------- |
+| `SESSION_SECRET`        | none, required      | Signs the session cookie. Use a long random value.          |
+| `SESSION_COOKIE_SECURE` | `false`             | Set to `true` when the application is served through HTTPS. |
+| `APP_PORT`              | `3000`              | Host port that is published to port 3000 of the container.  |
+| `DATA_VOLUME`           | `poschtiliste-data` | Named volume or host path that is mounted to `/data`.       |
+
+The image fixes `NODE_ENV=production`, `PORT=3000`, `DATABASE_CLIENT=sqlite3`,
+`DATABASE_FILENAME=/data/poschtiliste.sqlite` and
+`FRONTEND_DIST_DIR=/app/frontend/dist` (see
+[Production Docker image](#production-docker-image)).
+
+### Migrations
+
+On every start the container first applies all pending Knex migrations. The
+server only starts when the migrations succeed; otherwise the container exits
+with an error and `docker compose logs webapp` shows the cause. Migrations can
+also be run manually against the same volume:
+
+```shell
+$ docker compose run --rm webapp node backend/dist/src/db/migrate.js
+```
+
+The database starts empty. Load the [development seed data](#development-seed-data)
+to log in with the test users (local demo only, never in production):
+
+```shell
+$ docker compose exec webapp node backend/dist/src/db/seed.js
+```
+
+### Persistence
+
+The database lives in `/data/poschtiliste.sqlite`. By default this is the named
+volume `poschtiliste-data`, so the data survives container replacement:
+
+```shell
+$ docker compose down
+$ docker compose up --detach
+```
+
+`docker compose down --volumes` deletes the named volume and all data.
+
+To keep the database in a directory outside the container, set `DATA_VOLUME`
+to a host path (bind mount). Relative paths are resolved from the repository
+root:
+
+```shell
+DATA_VOLUME=/srv/poschtiliste/data
+```
+
+The container runs as the `node` user (UID 1000). On Linux hosts create the
+directory first and make it writable for this user, e.g.
+`sudo mkdir -p /srv/poschtiliste/data && sudo chown 1000:1000 /srv/poschtiliste/data`.
+
 ## Tests
 
 ```shell
