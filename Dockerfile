@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-bookworm-slim AS build
+FROM node:24-trixie-slim AS build
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ COPY backend backend
 COPY frontend frontend
 RUN npm run build && npm prune --omit=dev
 
-FROM node:24-bookworm-slim AS runtime
+FROM node:24-trixie-slim AS runtime
 
 ENV NODE_ENV=production \
     PORT=3000 \
