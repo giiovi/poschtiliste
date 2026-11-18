@@ -11,7 +11,16 @@ RUN npm ci
 
 COPY backend backend
 COPY frontend frontend
-RUN npm run build && npm prune --omit=dev
+RUN npm run build
+
+# keeps the dev dependencies and the tests, the ci pipeline runs the tests in containers of this stage
+FROM build AS test
+
+ENV CI=true
+
+FROM build AS production-dependencies
+
+RUN npm prune --omit=dev
 
 FROM node:24-trixie-slim AS runtime
 
@@ -23,7 +32,7 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/backend/package.json ./backend/package.json
 COPY --from=build --chown=node:node /app/backend/dist ./backend/dist
 COPY --from=build --chown=node:node /app/frontend/dist ./frontend/dist

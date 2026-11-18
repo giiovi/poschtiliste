@@ -358,6 +358,14 @@ dependencies into the runtime stage. The container runs as the non-root `node`
 user, applies pending Knex migrations at startup and serves the Vue application,
 API and Socket.IO from one published port.
 
+The `test` stage keeps the development dependencies and the tests. The Jenkins
+pipeline uses it to run the tests in a container:
+
+```shell
+$ docker build --target test --tag poschtiliste-test .
+$ docker run --rm poschtiliste-test npm run test:unit
+```
+
 Create a managed volume and start the application on local HTTP:
 
 ```shell
@@ -592,14 +600,31 @@ installs Node.js and all dependencies itself, so the build server needs no
 prepared project environment. The tests need no `.env` file either: they create
 their configuration and SQLite databases in memory or in temporary directories.
 
-| Stage             | Command                                                    | Purpose                                                 |
-| ----------------- | ---------------------------------------------------------- | ------------------------------------------------------- |
-| Checkout          | `deleteDir()`, `checkout scm`                              | Start from an empty workspace with the built commit     |
-| Install           | `npm ci`                                                   | Install the locked backend and frontend dependencies    |
-| Lint              | `npm run check`                                            | Run ESLint and the Prettier formatting check            |
-| Unit tests        | backend `test:unit`, frontend `test` (`npm run test:unit`) | Run Jest without integration tests and the Vitest suite |
-| Integration tests | backend `test:integration`                                 | Run the API tests against real SQLite test databases    |
-| Build             | `npm run build`                                            | Compile the backend and build the frontend bundle       |
+| Stage             | Command                                                 | Purpose                                                    |
+| ----------------- | ------------------------------------------------------- | ---------------------------------------------------------- |
+| Checkout          | `deleteDir()`, `checkout scm`                           | Start from an empty workspace with the built commit        |
+| Install           | `npm ci`                                                | Install the locked dependencies for the lint stage         |
+| Lint              | `npm run check`                                         | Run ESLint and the Prettier formatting check               |
+| Docker build      | `docker build --target test`, `docker build`            | Build the test image and the production image              |
+| Unit tests        | backend `test:unit`, frontend `test` in the test image  | Run Jest without integration tests and the Vitest suite    |
+| Integration tests | backend `test:integration` in the test image            | Run the API tests against real file-based SQLite databases |
+| Smoke test        | `docker run` of the production image, `GET /api/health` | Check that the production container starts and answers     |
+
+The `test` stage of the `Dockerfile` contains the compiled application, all
+dependencies including the development dependencies and the tests. The test
+stages start one container of this image per test suite, so the tests run
+exactly in the environment that the production image is built from. After each
+run the pipeline copies the JUnit reports out of the container and removes the
+container.
+
+The smoke test starts a container of the production image with a test session
+secret. The image applies the migrations to its SQLite database and starts the
+server. The pipeline then sends an HTTP request to `/api/health` inside the
+container every two seconds. The stage fails if the container stops or does
+not answer with a success status within 60 seconds, and prints the container
+log in that case. The container is removed afterwards in every case. Image and
+container names contain the Jenkins build tag, and both images are removed at
+the end of the build.
 
 A failing command fails its stage. Jenkins then skips the remaining stages and
 marks the build as failed. The test stages write JUnit reports to
@@ -615,11 +640,15 @@ These steps are needed once per Jenkins instance:
    GitHub, nodejs.org and the npm registry. The native `sqlite3` module needs
    glibc 2.38 or newer, which the official Debian trixie based Jenkins image
    provides.
-2. Install the plugins under Manage Jenkins → Plugins → Available plugins:
+2. Make the Docker CLI available on the agent and allow the `jenkins` user to
+   use the Docker daemon, for example by adding it to the `docker` group. When
+   Jenkins itself runs in a container, mount `/var/run/docker.sock` into it
+   and add the group of the socket with `--group-add`.
+3. Install the plugins under Manage Jenkins → Plugins → Available plugins:
    Pipeline (`workflow-aggregator`), Git (`git`), JUnit (`junit`) and NodeJS
    (`nodejs`). "Install suggested plugins" in the setup wizard already covers
    all except NodeJS.
-3. Add a Node.js installation under Manage Jenkins → Tools → NodeJS
+4. Add a Node.js installation under Manage Jenkins → Tools → NodeJS
    installations:
    - Name: `node-24`, it must match `tools { nodejs 'node-24' }` in the
      `Jenkinsfile`
@@ -627,16 +656,16 @@ These steps are needed once per Jenkins instance:
 
    Jenkins downloads Node.js on the first build.
 
-4. Credentials are not needed for the public GitHub repository. For a private
+5. Credentials are not needed for the public GitHub repository. For a private
    repository, add a "Username with password" credential with a GitHub
    personal access token under Manage Jenkins → Credentials and select it in
    the job.
-5. Create the job with New Item → Pipeline:
+6. Create the job with New Item → Pipeline:
    - Definition: Pipeline script from SCM
    - SCM: Git, Repository URL `https://github.com/giiovi/poschtiliste.git`
    - Branch Specifier: `*/develop` or the branch to build
    - Script Path: `Jenkinsfile`
-6. Start the pipeline with "Build Now". There is no automatic trigger yet.
+7. Start the pipeline with "Build Now". There is no automatic trigger yet.
 
 Run the test stages locally with:
 
