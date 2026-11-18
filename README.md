@@ -78,6 +78,7 @@ backend and frontend packages and propagate failures to the terminal and CI.
 | `npm run build`              | Compile the backend and build the frontend bundle    | Before a release or production start                 |
 | `npm start`                  | Start the compiled backend                           | After `npm run build` in a production-like setup     |
 | `npm test`                   | Run all backend and frontend tests                   | Before every pull request                            |
+| `npm run test:unit`          | Run all tests except the integration tests           | For fast feedback while developing                   |
 | `npm run test:integration`   | Run API tests against isolated real SQLite databases | After backend or persistence changes                 |
 | `npm run test:authorization` | Run authorization tests with 100% coverage gates     | After authentication or permission changes           |
 | `npm run lint`               | Check backend and frontend source with ESLint        | While developing and before committing               |
@@ -581,6 +582,67 @@ Skip the hook only in justified exceptional cases:
 
 ```shell
 $ git commit --no-verify
+```
+
+## Continuous integration (Jenkins)
+
+The `Jenkinsfile` in the repository root defines the declarative Jenkins
+pipeline. Every build deletes the workspace, checks out the repository and
+installs Node.js and all dependencies itself, so the build server needs no
+prepared project environment. The tests need no `.env` file either: they create
+their configuration and SQLite databases in memory or in temporary directories.
+
+| Stage             | Command                                                    | Purpose                                                 |
+| ----------------- | ---------------------------------------------------------- | ------------------------------------------------------- |
+| Checkout          | `deleteDir()`, `checkout scm`                              | Start from an empty workspace with the built commit     |
+| Install           | `npm ci`                                                   | Install the locked backend and frontend dependencies    |
+| Lint              | `npm run check`                                            | Run ESLint and the Prettier formatting check            |
+| Unit tests        | backend `test:unit`, frontend `test` (`npm run test:unit`) | Run Jest without integration tests and the Vitest suite |
+| Integration tests | backend `test:integration`                                 | Run the API tests against real SQLite test databases    |
+| Build             | `npm run build`                                            | Compile the backend and build the frontend bundle       |
+
+A failing command fails its stage. Jenkins then skips the remaining stages and
+marks the build as failed. The test stages write JUnit reports to
+`reports/junit/`, and the `junit` step publishes them after every build, also
+after a failure. The results appear under "Test Result" on the build page and
+as a trend on the job page.
+
+### Manual Jenkins preparation
+
+These steps are needed once per Jenkins instance:
+
+1. Use a Jenkins LTS controller or agent on Linux with internet access to
+   GitHub, nodejs.org and the npm registry. The native `sqlite3` module needs
+   glibc 2.38 or newer, which the official Debian trixie based Jenkins image
+   provides.
+2. Install the plugins under Manage Jenkins → Plugins → Available plugins:
+   Pipeline (`workflow-aggregator`), Git (`git`), JUnit (`junit`) and NodeJS
+   (`nodejs`). "Install suggested plugins" in the setup wizard already covers
+   all except NodeJS.
+3. Add a Node.js installation under Manage Jenkins → Tools → NodeJS
+   installations:
+   - Name: `node-24`, it must match `tools { nodejs 'node-24' }` in the
+     `Jenkinsfile`
+   - Install automatically from nodejs.org with the newest 24.x version
+
+   Jenkins downloads Node.js on the first build.
+
+4. Credentials are not needed for the public GitHub repository. For a private
+   repository, add a "Username with password" credential with a GitHub
+   personal access token under Manage Jenkins → Credentials and select it in
+   the job.
+5. Create the job with New Item → Pipeline:
+   - Definition: Pipeline script from SCM
+   - SCM: Git, Repository URL `https://github.com/giiovi/poschtiliste.git`
+   - Branch Specifier: `*/develop` or the branch to build
+   - Script Path: `Jenkinsfile`
+6. Start the pipeline with "Build Now". There is no automatic trigger yet.
+
+Run the test stages locally with:
+
+```shell
+$ npm run test:unit
+$ npm run test:integration
 ```
 
 ## Source structure
