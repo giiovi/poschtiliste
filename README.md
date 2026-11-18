@@ -27,6 +27,9 @@ $ cp .env.example .env
 values. Never commit a real `.env` file; it is listed in `.gitignore`.
 `SESSION_SECRET` is required by the backend to sign session cookies and must be
 replaced with a private, sufficiently long value in each deployed environment.
+`SESSION_COOKIE_SECURE` should be `false` for direct local HTTP and `true` when
+the application is exposed through HTTPS. If omitted, it defaults to `true` in
+production and `false` otherwise.
 
 The development and test databases use separate environment variables:
 
@@ -315,6 +318,54 @@ $ npm start
 creates the frontend production bundle in `frontend/dist/`. Test files are
 compiled separately by Jest and are not included in the production output.
 `npm start` runs `backend/dist/src/server.js` without using `ts-node`.
+
+## Production Docker image
+
+Build the multi-stage production image from the repository root:
+
+```shell
+$ docker build --tag poschtiliste:0.1.0 .
+```
+
+The build compiles the TypeScript backend and Vue frontend, removes development
+dependencies and copies only the compiled application plus production
+dependencies into the runtime stage. The container runs as the non-root `node`
+user, applies pending Knex migrations at startup and serves the Vue application,
+API and Socket.IO from one published port.
+
+Create a managed volume and start the application on local HTTP:
+
+```shell
+$ docker volume create poschtiliste-data
+$ docker run --detach --name poschtiliste \
+    --publish 3000:3000 \
+    --env SESSION_SECRET=replace-with-a-long-random-secret \
+    --env SESSION_COOKIE_SECURE=false \
+    --mount source=poschtiliste-data,target=/data \
+    poschtiliste:0.1.0
+$ curl http://localhost:3000/api/health
+```
+
+The health response is `{ "status": "ok" }`. No application source or local
+`node_modules` directory is mounted. SQLite data is stored in
+`/data/poschtiliste.sqlite` inside the named volume and therefore survives
+container replacement. Configuration can be changed with `PORT`,
+`DATABASE_CLIENT`, `DATABASE_FILENAME`, `SESSION_SECRET`,
+`SESSION_COOKIE_SECURE` and `FRONTEND_DIST_DIR`. Keep secure cookies enabled
+when the container is exposed through HTTPS.
+
+Stop and remove the container without deleting its data:
+
+```shell
+$ docker rm --force poschtiliste
+```
+
+For an offline submission, export and later import the complete image:
+
+```shell
+$ docker save --output poschtiliste-0.1.0.tar poschtiliste:0.1.0
+$ docker load --input poschtiliste-0.1.0.tar
+```
 
 ## Tests
 
