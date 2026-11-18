@@ -177,11 +177,13 @@ export function createShoppingListService(
         ];
         await assertUsersExist(transaction, referencedUserIds);
 
-        const [listId] = await transaction("shopping_lists").insert({
-          title: input.title,
-          due_date: input.dueDate,
-          responsible_user_id: input.responsibleUserId,
-        });
+        const [{ id: listId }] = await transaction("shopping_lists")
+          .insert({
+            title: input.title,
+            due_date: input.dueDate,
+            responsible_user_id: input.responsibleUserId,
+          })
+          .returning("id");
 
         if (input.assignedUserIds.length > 0) {
           await transaction("list_assignments").insert(
