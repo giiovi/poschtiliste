@@ -25,6 +25,11 @@ pipeline {
     timeout(time: 30, unit: 'MINUTES')
   }
 
+  triggers {
+    // nightly build of the integration branches, pushes and pull requests start builds through the multibranch scan
+    cron(env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'main' ? 'H 2 * * *' : '')
+  }
+
   environment {
     CI = 'true'
     // git hooks are only needed on developer machines
