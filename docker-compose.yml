@@ -38,6 +38,30 @@ services:
       # named volume by default, a host path in DATA_VOLUME turns it into a bind mount
       - ${DATA_VOLUME:-poschtiliste-database}:/var/lib/postgresql
 
+  jenkins:
+    build: jenkins
+    image: poschtiliste-jenkins:latest
+    # only started with "docker compose up jenkins" or "--profile jenkins"
+    profiles:
+      - jenkins
+    restart: unless-stopped
+    ports:
+      - "${JENKINS_PORT:-8080}:8080"
+    # the group of the docker socket, 0 on docker desktop, the docker group on linux hosts
+    group_add:
+      - "${DOCKER_GID:-0}"
+    environment:
+      JENKINS_ADMIN_ID: ${JENKINS_ADMIN_ID:-admin}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-}
+      JENKINS_LOCATION_URL: http://localhost:${JENKINS_PORT:-8080}/
+      GITHUB_USERNAME: ${GITHUB_USERNAME:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    volumes:
+      - poschtiliste-jenkins-home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+
 volumes:
   poschtiliste-database:
     name: poschtiliste-database
+  poschtiliste-jenkins-home:
+    name: poschtiliste-jenkins-home

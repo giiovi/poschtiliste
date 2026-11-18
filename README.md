@@ -445,6 +445,9 @@ The image itself still defaults to SQLite (`DATABASE_CLIENT=sqlite3`,
 `PORT=3000` and `FRONTEND_DIST_DIR=/app/frontend/dist` (see
 [Production Docker image](#production-docker-image)).
 
+The optional third service `jenkins` only starts on request, see
+[Jenkins with Docker Compose](#jenkins-with-docker-compose).
+
 ### Migrations
 
 On every start the application container first applies all pending Knex
@@ -651,9 +654,75 @@ marks the build as failed. The test stages write JUnit reports to
 after a failure. The results appear under "Test Result" on the build page and
 as a trend on the job page.
 
+### Jenkins with Docker Compose
+
+`docker-compose.yml` contains a ready-to-use Jenkins in the service `jenkins`.
+It belongs to the Compose profile `jenkins`, so `docker compose up` for the
+application does not start it. Set the administrator password in `.env` and
+start it with:
+
+```shell
+$ docker compose up --detach --build jenkins
+```
+
+Jenkins is then available on `http://localhost:8080` with the user `admin`.
+The image in `jenkins/` and the configuration in `jenkins/casc.yaml` replace
+the manual preparation below:
+
+| Part            | Reproducible through                                                                                      |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| Jenkins         | Pinned base image `jenkins/jenkins:2.580.2-lts-jdk21`, setup wizard disabled                              |
+| Plugins         | `jenkins/plugins.txt` with pinned versions, `jenkins-plugin-cli` adds their dependencies during the build |
+| Node.js         | Copied from `node:24-trixie-slim` to `/opt/node-24` and registered as the NodeJS installation `node-24`   |
+| Docker          | Docker CLI with buildx from `docker:29-cli`, the host daemon through the mounted `/var/run/docker.sock`   |
+| Security        | Local administrator from `JENKINS_ADMIN_ID` and `JENKINS_ADMIN_PASSWORD`, no anonymous access             |
+| Credentials     | `github-token` from `GITHUB_USERNAME` and `GITHUB_TOKEN`                                                  |
+| Multibranch job | `poschtiliste` with the GitHub branch source, the default behaviours and a scan every minute              |
+
+The configuration as code plugin applies `jenkins/casc.yaml` on every start, so
+changes to these settings belong in the file and not in the web interface. The
+multibranch job uses the token only when `GITHUB_TOKEN` is set, otherwise it
+scans anonymously with the low GitHub rate limit. Jenkins refuses to start
+without `JENKINS_ADMIN_PASSWORD`.
+
+| Variable                 | Default | Purpose                                                          |
+| ------------------------ | ------- | ---------------------------------------------------------------- |
+| `JENKINS_ADMIN_PASSWORD` | none    | Password of the Jenkins administrator, required to start Jenkins |
+| `JENKINS_ADMIN_ID`       | `admin` | User name of the Jenkins administrator                           |
+| `JENKINS_PORT`           | `8080`  | Host port of the Jenkins web interface                           |
+| `DOCKER_GID`             | `0`     | Group of `/var/run/docker.sock`, `0` on Docker Desktop           |
+| `GITHUB_USERNAME`        | empty   | GitHub user that owns the token                                  |
+| `GITHUB_TOKEN`           | empty   | Personal access token (classic) with the `public_repo` scope     |
+
+On a Linux host the socket belongs to the `docker` group. Set `DOCKER_GID` to
+its id, for example with `getent group docker | cut -d: -f3`.
+
+Jobs, build history and plugin data live in the named volume
+`poschtiliste-jenkins-home` and survive `docker compose down` and `up`. A plain
+`docker compose down` ignores the profile and keeps Jenkins running. With the
+profile, `down` removes all containers including the application, and `up`
+starts Jenkins again:
+
+```shell
+$ docker compose --profile jenkins down
+$ docker compose up --detach jenkins
+```
+
+To stop only Jenkins, use `docker compose stop jenkins`. To start over with an
+empty Jenkins, remove its volume after `down` with
+`docker volume rm poschtiliste-jenkins-home`; the next start creates the
+configured job again. `down --volumes` would delete the database volume as
+well.
+
+The builds run on the Jenkins controller itself. They can read its environment
+variables, including the token, and control the Docker daemon of the host
+through the socket, which equals root access to the host. Only use this Jenkins
+for this repository and keep it unreachable from untrusted networks.
+
 ### Manual Jenkins preparation
 
-These steps are needed once per Jenkins instance:
+These steps are needed once per Jenkins instance that is not started with
+Docker Compose:
 
 1. Use a Jenkins LTS controller or agent on Linux with internet access to
    GitHub, nodejs.org and the npm registry. The native `sqlite3` module needs
