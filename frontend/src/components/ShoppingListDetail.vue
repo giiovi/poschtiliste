@@ -156,7 +156,8 @@ async function addItem(): Promise<void> {
       name,
       quantity: newQuantity.value,
     });
-    items.value.push(createdItem);
+    // the own realtime event may arrive before this response
+    addOrReplaceItem(createdItem);
     newName.value = "";
     newQuantity.value = 1;
   } catch (error) {
