@@ -27,6 +27,9 @@ $ cp .env.example .env
 values. Never commit a real `.env` file; it is listed in `.gitignore`.
 `SESSION_SECRET` is required by the backend to sign session cookies and must be
 replaced with a private, sufficiently long value in each deployed environment.
+`SESSION_COOKIE_SECURE` should be `false` for direct local HTTP and `true` when
+the application is exposed through HTTPS. If omitted, it defaults to `true` in
+production and `false` otherwise.
 
 The development and test databases use separate environment variables:
 
@@ -37,6 +40,32 @@ The development and test databases use separate environment variables:
 
 No database connection parameter is hardcoded in the Knex configuration. Copy
 `.env.example` to `.env` before running database commands locally.
+
+## npm command reference
+
+Run these commands from the repository root. The root scripts delegate to the
+backend and frontend packages and propagate failures to the terminal and CI.
+
+| Command                      | Purpose                                              | When to run it                                       |
+| ---------------------------- | ---------------------------------------------------- | ---------------------------------------------------- |
+| `npm install`                | Install all workspace dependencies and Git hooks     | After cloning or changing dependencies               |
+| `npm run dev`                | Start the backend with automatic restarts            | During backend development                           |
+| `npm run dev:frontend`       | Start the Vue development server                     | In a second terminal during frontend development     |
+| `npm run build`              | Compile the backend and build the frontend bundle    | Before a release or production start                 |
+| `npm start`                  | Start the compiled backend                           | After `npm run build` in a production-like setup     |
+| `npm test`                   | Run all backend and frontend tests                   | Before every pull request                            |
+| `npm run test:integration`   | Run API tests against isolated real SQLite databases | After backend or persistence changes                 |
+| `npm run test:authorization` | Run authorization tests with 100% coverage gates     | After authentication or permission changes           |
+| `npm run lint`               | Check backend and frontend source with ESLint        | While developing and before committing               |
+| `npm run format`             | Format supported repository files with Prettier      | After editing or when `format:check` fails           |
+| `npm run format:check`       | Verify formatting without modifying files            | Before committing and in CI                          |
+| `npm run check`              | Run lint and the formatting check together           | Before every pull request                            |
+| `npm run db:migrate`         | Apply pending development-database migrations        | After setup and after schema changes                 |
+| `npm run db:seed`            | Load reproducible development data                   | After migrations when sample data is needed          |
+| `npm run db:rollback`        | Roll back all development-database migrations        | When resetting or validating migration reversibility |
+
+Append `-- --env test` to a database command to target the separate test
+database, for example `npm run db:migrate -- --env test`.
 
 ## Database migrations
 
@@ -252,6 +281,11 @@ When responsibility or an assignment is removed, the previous recipients also
 receive the final `list:updated` event so their frontend can remove or refresh
 the list.
 
+The frontend shows incoming events as a non-blocking toast for four seconds.
+The dashboard refreshes its cards in the background, while an open list detail
+applies item additions, updates and deletions directly without a page reload.
+Events for other list ids are ignored by the detail view.
+
 ## User administration
 
 Administrators see a `Benutzer` link in the app bar that opens `/admin/users`.
@@ -284,6 +318,54 @@ $ npm start
 creates the frontend production bundle in `frontend/dist/`. Test files are
 compiled separately by Jest and are not included in the production output.
 `npm start` runs `backend/dist/src/server.js` without using `ts-node`.
+
+## Production Docker image
+
+Build the multi-stage production image from the repository root:
+
+```shell
+$ docker build --tag poschtiliste:0.1.0 .
+```
+
+The build compiles the TypeScript backend and Vue frontend, removes development
+dependencies and copies only the compiled application plus production
+dependencies into the runtime stage. The container runs as the non-root `node`
+user, applies pending Knex migrations at startup and serves the Vue application,
+API and Socket.IO from one published port.
+
+Create a managed volume and start the application on local HTTP:
+
+```shell
+$ docker volume create poschtiliste-data
+$ docker run --detach --name poschtiliste \
+    --publish 3000:3000 \
+    --env SESSION_SECRET=replace-with-a-long-random-secret \
+    --env SESSION_COOKIE_SECURE=false \
+    --mount source=poschtiliste-data,target=/data \
+    poschtiliste:0.1.0
+$ curl http://localhost:3000/api/health
+```
+
+The health response is `{ "status": "ok" }`. No application source or local
+`node_modules` directory is mounted. SQLite data is stored in
+`/data/poschtiliste.sqlite` inside the named volume and therefore survives
+container replacement. Configuration can be changed with `PORT`,
+`DATABASE_CLIENT`, `DATABASE_FILENAME`, `SESSION_SECRET`,
+`SESSION_COOKIE_SECURE` and `FRONTEND_DIST_DIR`. Keep secure cookies enabled
+when the container is exposed through HTTPS.
+
+Stop and remove the container without deleting its data:
+
+```shell
+$ docker rm --force poschtiliste
+```
+
+For an offline submission, export and later import the complete image:
+
+```shell
+$ docker save --output poschtiliste-0.1.0.tar poschtiliste:0.1.0
+$ docker load --input poschtiliste-0.1.0.tar
+```
 
 ## Tests
 

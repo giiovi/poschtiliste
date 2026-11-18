@@ -23,6 +23,8 @@ function sqliteConfiguration(
   clientVariable: string,
   filenameVariable: string,
 ): Knex.Config {
+  const sourceExtension = __filename.endsWith(".ts") ? ".ts" : ".js";
+
   return {
     client: requiredEnvironmentVariable(environment, clientVariable),
     connection: {
@@ -31,28 +33,33 @@ function sqliteConfiguration(
     useNullAsDefault: true,
     migrations: {
       directory: path.resolve(__dirname, "migrations"),
-      loadExtensions: [".ts"],
+      loadExtensions: [sourceExtension],
     },
     seeds: {
       directory: path.resolve(__dirname, "seeds"),
-      loadExtensions: [".ts"],
+      loadExtensions: [sourceExtension],
     },
   };
+}
+
+export function createKnexEnvironmentConfig(
+  environment: NodeJS.ProcessEnv,
+  databaseEnvironment: DatabaseEnvironment,
+): Knex.Config {
+  return databaseEnvironment === "test"
+    ? sqliteConfiguration(
+        environment,
+        "TEST_DATABASE_CLIENT",
+        "TEST_DATABASE_FILENAME",
+      )
+    : sqliteConfiguration(environment, "DATABASE_CLIENT", "DATABASE_FILENAME");
 }
 
 export function createKnexConfig(
   environment: NodeJS.ProcessEnv,
 ): KnexEnvironments {
   return {
-    development: sqliteConfiguration(
-      environment,
-      "DATABASE_CLIENT",
-      "DATABASE_FILENAME",
-    ),
-    test: sqliteConfiguration(
-      environment,
-      "TEST_DATABASE_CLIENT",
-      "TEST_DATABASE_FILENAME",
-    ),
+    development: createKnexEnvironmentConfig(environment, "development"),
+    test: createKnexEnvironmentConfig(environment, "test"),
   };
 }
