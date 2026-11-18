@@ -664,9 +664,9 @@ These steps are needed once per Jenkins instance:
    Jenkins itself runs in a container, mount `/var/run/docker.sock` into it
    and add the group of the socket with `--group-add`.
 3. Install the plugins under Manage Jenkins → Plugins → Available plugins:
-   Pipeline (`workflow-aggregator`), Git (`git`), JUnit (`junit`) and NodeJS
-   (`nodejs`). "Install suggested plugins" in the setup wizard already covers
-   all except NodeJS.
+   Pipeline (`workflow-aggregator`), Git (`git`), GitHub Branch Source
+   (`github-branch-source`), JUnit (`junit`) and NodeJS (`nodejs`). "Install
+   suggested plugins" in the setup wizard already covers all except NodeJS.
 4. Add a Node.js installation under Manage Jenkins → Tools → NodeJS
    installations:
    - Name: `node-24`, it must match `tools { nodejs 'node-24' }` in the
@@ -675,16 +675,59 @@ These steps are needed once per Jenkins instance:
 
    Jenkins downloads Node.js on the first build.
 
-5. Credentials are not needed for the public GitHub repository. For a private
-   repository, add a "Username with password" credential with a GitHub
-   personal access token under Manage Jenkins → Credentials and select it in
-   the job.
-6. Create the job with New Item → Pipeline:
-   - Definition: Pipeline script from SCM
-   - SCM: Git, Repository URL `https://github.com/giiovi/poschtiliste.git`
-   - Branch Specifier: `*/develop` or the branch to build
-   - Script Path: `Jenkinsfile`
-7. Start the pipeline with "Build Now". There is no automatic trigger yet.
+5. Create a GitHub personal access token (classic) with the `public_repo`
+   scope, or `repo` for a private repository, under GitHub → Settings →
+   Developer settings. Store it under Manage Jenkins → Credentials → System →
+   Global credentials → Add Credentials:
+   - Kind: Username with password
+   - Username: the GitHub user that owns the token
+   - Password: the token
+   - ID: `github-token`
+
+   The token exists only in the encrypted Jenkins credential store. The
+   repository contains no secrets, and the `Jenkinsfile` references no
+   credential.
+
+6. Create the job with New Item → Multibranch Pipeline:
+   - Branch Sources → Add source → GitHub, Credentials `github-token`,
+     Repository HTTPS URL `https://github.com/giiovi/poschtiliste`
+   - Keep the default behaviours: discover branches except those filed as pull
+     requests, pull requests from the repository and pull requests from forks
+     of users with write access
+   - Build Configuration: by Jenkinsfile, Script Path `Jenkinsfile`
+   - Scan Multibranch Pipeline Triggers: "Periodically if not otherwise run"
+     with an interval of 1 minute
+
+   Jenkins then reads the repository with the token, creates one job per
+   branch and per pull request (`PR-<number>`) that contains a `Jenkinsfile`
+   and builds it.
+
+### Automatic triggers
+
+| Trigger          | Configured in                   | Starts a build when                                    |
+| ---------------- | ------------------------------- | ------------------------------------------------------ |
+| Multibranch scan | Multibranch job, 1 minute       | A branch or pull request is new or has a new commit    |
+| GitHub webhook   | GitHub repository settings      | GitHub reports a push or pull request event (optional) |
+| Nightly cron     | `triggers` in the `Jenkinsfile` | Every night around 02:00 for `develop` and `main`      |
+
+The periodic scan works without any inbound connection, so it also covers a
+Jenkins on a developer machine. Each scan asks the GitHub API for the branches
+and pull requests and builds every head whose commit changed since the last
+scan. A push is therefore built at the latest about one minute later. The scan
+needs the token: without credentials GitHub allows only 60 API requests per
+hour, and Jenkins then delays the scans by several minutes.
+
+A Jenkins that GitHub can reach can be triggered immediately with a webhook.
+Add it in the GitHub repository under Settings → Webhooks with the payload URL
+`https://<jenkins-host>/github-webhook/`, content type `application/json` and
+the events "Pushes" and "Pull requests". The scan interval can then be raised,
+for example to one hour, and only serves as a fallback.
+
+The cron trigger builds `develop` and `main` every night even without a new
+commit, so failures caused by updated base images or external services become
+visible early. `H` spreads the start time within the hour. Jenkins applies the
+trigger after the first build of the branch, and other branches get no
+schedule.
 
 Run the test stages locally with:
 
