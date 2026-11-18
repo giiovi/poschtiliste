@@ -53,4 +53,47 @@ describe("Knex configuration", () => {
       ).connection,
     ).toEqual({ filename: "/data/poschtiliste.sqlite" });
   });
+
+  const postgresEnvironment: NodeJS.ProcessEnv = {
+    DATABASE_CLIENT: "pg",
+    DATABASE_HOST: "database",
+    DATABASE_NAME: "poschtiliste",
+    DATABASE_USER: "poschtiliste",
+    DATABASE_PASSWORD: "secret",
+  };
+
+  test("creates a postgresql config from environment variables", () => {
+    const config = createKnexEnvironmentConfig(
+      postgresEnvironment,
+      "development",
+    );
+
+    expect(config.client).toBe("pg");
+    expect(config.useNullAsDefault).toBe(false);
+    expect(config.connection).toEqual({
+      host: "database",
+      port: 5432,
+      database: "poschtiliste",
+      user: "poschtiliste",
+      password: "secret",
+    });
+  });
+
+  test("reads the postgresql port from the environment", () => {
+    const config = createKnexEnvironmentConfig(
+      { ...postgresEnvironment, DATABASE_PORT: "6543" },
+      "development",
+    );
+
+    expect(config.connection).toMatchObject({ port: 6543 });
+  });
+
+  test("rejects a missing postgresql password", () => {
+    expect(() =>
+      createKnexEnvironmentConfig(
+        { ...postgresEnvironment, DATABASE_PASSWORD: "" },
+        "development",
+      ),
+    ).toThrow("Missing required environment variable: DATABASE_PASSWORD");
+  });
 });

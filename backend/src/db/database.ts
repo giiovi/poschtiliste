@@ -12,12 +12,15 @@ export function wrapConnection(connection: Knex): Database {
   return {
     connection,
     async all<T>(sql: string, parameters: unknown[] = []): Promise<T[]> {
-      const rows: unknown = await connection.raw(
+      const result: unknown = await connection.raw(
         sql,
         parameters as Knex.RawBinding[],
       );
 
-      return rows as T[];
+      // sqlite returns the rows directly, postgres a result object with rows
+      return Array.isArray(result)
+        ? (result as T[])
+        : (result as { rows: T[] }).rows;
     },
   };
 }

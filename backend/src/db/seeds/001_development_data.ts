@@ -109,12 +109,14 @@ async function replaceLists(
     .delete();
 
   for (const list of seedLists) {
-    const [listId] = await knex("shopping_lists").insert({
-      title: list.title,
-      due_date: list.dueDate,
-      responsible_user_id: userIds.get(list.responsibleUsername),
-      completed: list.completed,
-    });
+    const [{ id: listId }] = await knex("shopping_lists")
+      .insert({
+        title: list.title,
+        due_date: list.dueDate,
+        responsible_user_id: userIds.get(list.responsibleUsername),
+        completed: list.completed,
+      })
+      .returning("id");
 
     await knex("shopping_items").insert(
       list.items.map((item) => ({

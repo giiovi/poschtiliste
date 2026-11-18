@@ -23,7 +23,7 @@ export function createAuthService(database: Database): AuthService {
   return {
     async authenticate(username, password) {
       const users = await database.all<UserRecord>(
-        `SELECT id, username, password_hash AS passwordHash, role
+        `SELECT id, username, password_hash AS "passwordHash", role
          FROM users
          WHERE username = ?
          LIMIT 1`,
