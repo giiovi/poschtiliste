@@ -10,12 +10,36 @@ Teil der Poschtilischte-API.
 
 ## Setup
 
+Prepare a fresh clone with a single command:
+
+```shell
+$ npm run setup
+```
+
+`scripts/dev-setup.mjs` runs these steps and stops at the first error:
+
+1. `npm install` installs the backend and frontend dependencies (npm
+   workspaces) and activates the Husky Git hooks.
+2. `.env` is created from `.env.example`. An existing `.env` is kept.
+3. `npm run db:migrate` and `npm run db:seed` create the development database
+   in `backend/data/` and fill it with the seed users and lists.
+4. If Docker is running and `docker-compose.yml` exists,
+   `docker compose up --detach --build` builds the production image from the
+   `Dockerfile` and starts the Compose environment on port 3000. Otherwise this
+   step is skipped with a hint. Use `npm run setup -- --no-docker` to skip it on
+   purpose.
+
+The script can be run again at any time. The repository has no CI environment
+such as Jenkins yet, so the setup does not start one.
+
+Stop the container with `docker compose down`. It uses port 3000, so stop it
+before starting the backend locally with `npm run dev`.
+
+The individual steps can still be run by hand, starting with:
+
 ```shell
 $ npm install
 ```
-
-The repository uses npm workspaces. This command installs both backend and
-frontend dependencies.
 
 ## Environment configuration
 
@@ -486,6 +510,24 @@ request passes through Express, the authentication middleware and the shopping
 list service into SQLite. The test then queries the `shopping_lists` table
 directly with Knex and verifies that the submitted title, due date and
 responsible user were actually persisted.
+
+`api-crud.integration.test.ts` runs the complete application from `createApp`
+against a separate, file-based SQLite test database. The helper
+`backend/tests/helpers/integration-database.ts` sets up the database like this:
+
+1. It creates a temporary directory and points `TEST_DATABASE_CLIENT` and
+   `TEST_DATABASE_FILENAME` at a new file in it, so the Knex `test`
+   environment is used and the development database is never touched.
+2. Before every test it rolls back all migrations, applies them again with
+   `migrate.latest()` and runs the development seed, so each test starts from
+   the same known state.
+3. After the suite it closes the connection and deletes the temporary
+   directory, so no state is left behind.
+
+The tests log in with the seeded users through `POST /api/auth/login`, cover
+login, `/me` and logout, and create, read, update and delete lists and items
+over HTTP. After each write they read the affected rows directly with Knex to
+verify that the data was stored correctly.
 
 For the file-based test database used by manual Knex commands, first copy
 `.env.example` to `.env`, then apply its migrations:
