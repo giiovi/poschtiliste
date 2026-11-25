@@ -1,8 +1,9 @@
-# Starter-Projekt für Modul 324
+# Poschtilischte
 
 Autor: [Alexander Schenkel](mailto:alexander.schenkel@bztf.ch), [BZT Frauenfeld](https://www.bztf.ch/)
 
-Diese [ ExpressJS ](https://expressjs.com)-Applikation dient als Starter-Projekt für das ICT-Modul 324, DevOps-Prozesse anwenden.
+Poschtilischte ist eine gemeinsame Einkaufsliste für das ICT-Modul 324,
+DevOps-Prozesse anwenden.
 
 Die Applikation verwendet ein ExpressJS-/TypeScript-Backend, ein Vue-Frontend
 und eine über Knex verwaltete SQLite-Datenbank. Die alte Chinook-Demo ist nicht
@@ -40,6 +41,47 @@ The individual steps can still be run by hand, starting with:
 ```shell
 $ npm install
 ```
+
+## Quick start for assessment
+
+The shortest reproducible way to start the submitted application uses Docker
+Compose. It requires Git and Docker with the Compose plugin; Node.js is not
+required on the host for this path.
+
+```shell
+$ git clone https://github.com/giiovi/poschtiliste.git
+$ cd poschtiliste
+$ cp .env.example .env
+```
+
+Before starting, replace `SESSION_SECRET` and `POSTGRES_PASSWORD` in `.env`
+with private random values. Keep `SESSION_COOKIE_SECURE=false` only while the
+application is accessed directly over local HTTP. Then build and start both
+the application and PostgreSQL:
+
+```shell
+$ docker compose up --detach --build
+$ docker compose ps
+$ docker compose exec webapp node backend/dist/src/db/seed.js
+$ curl http://localhost:3000/api/health
+```
+
+Both services must show as running and the health endpoint must return
+`{"status":"ok"}`. Open `http://localhost:3000` and use one of the
+[development seed logins](#development-seed-data). Seeding creates known demo
+passwords and is therefore only suitable for assessment or local development,
+not a public deployment.
+
+Useful diagnostics and shutdown commands are:
+
+```shell
+$ docker compose logs --tail 100 webapp database
+$ docker compose down
+```
+
+`docker compose down` preserves the PostgreSQL volume. Do not add `--volumes`
+unless all stored data may be deleted. The following sections document the
+environment, image, Compose update procedure and Jenkins setup in detail.
 
 ## Environment configuration
 
@@ -489,6 +531,45 @@ The PostgreSQL image creates the directory and hands it to its `postgres`
 user on the first start. The data itself lies in the subdirectory
 `18/docker`.
 
+### Production update and rollback
+
+An update rebuilds only from committed source, keeps the PostgreSQL volume and
+lets the image entry point apply pending Knex migrations before the server
+starts. Run these commands from a clean checkout of the intended release:
+
+```shell
+$ docker compose exec -T database pg_dump \
+    -U poschtiliste -d poschtiliste > poschtiliste-before-update.sql
+$ docker image tag poschtiliste:latest poschtiliste:rollback
+$ git pull --ff-only
+$ docker compose build --pull webapp
+$ docker compose up --detach --no-deps webapp
+$ docker compose ps
+$ curl http://localhost:3000/api/health
+$ docker compose logs --tail 100 webapp
+```
+
+Use the configured `POSTGRES_USER` and `POSTGRES_DB` instead of the defaults in
+the backup command when they differ. `--no-deps` leaves the healthy database
+container and its volume untouched. The old web container is replaced; the
+new container is considered ready only after its health check succeeds.
+
+If the new application image fails before a database migration has changed the
+schema incompatibly, restore the previous image and recreate only the web
+service:
+
+```shell
+$ docker image tag poschtiliste:rollback poschtiliste:latest
+$ docker compose up --detach --no-deps --no-build --force-recreate webapp
+$ curl http://localhost:3000/api/health
+```
+
+For an incompatible database migration, stop the application and restore the
+pre-update PostgreSQL dump before starting the previous image. Test that
+recovery procedure on a non-production copy first; restoring a dump replaces
+database state created after the backup. Keep release-specific image tags and
+backups until the update has been verified.
+
 ## Tests
 
 ```shell
@@ -653,7 +734,10 @@ as a trend on the job page.
 
 ### Manual Jenkins preparation
 
-These steps are needed once per Jenkins instance:
+These steps reproduce the current CI environment on an empty Jenkins instance.
+They are needed once per instance; job configuration then remains in
+`JENKINS_HOME` and the versioned `Jenkinsfile` remains the source of truth for
+the pipeline stages:
 
 1. Use a Jenkins LTS controller or agent on Linux with internet access to
    GitHub, nodejs.org and the npm registry. The native `sqlite3` module needs
@@ -675,16 +759,40 @@ These steps are needed once per Jenkins instance:
 
    Jenkins downloads Node.js on the first build.
 
-5. Credentials are not needed for the public GitHub repository. For a private
-   repository, add a "Username with password" credential with a GitHub
-   personal access token under Manage Jenkins → Credentials and select it in
-   the job.
-6. Create the job with New Item → Pipeline:
+5. Credentials are not needed to clone the current public repository. For a
+   private repository, add a narrowly scoped GitHub token under Manage Jenkins
+   → Credentials, give it an identifiable ID such as `github-token`, and
+   select it only in the SCM configuration. Do not store it in the repository,
+   `Jenkinsfile`, build parameters or global build environment.
+6. Create the automation job with New Item → Pipeline and use the name
+   `poschtiliste-develop`:
    - Definition: Pipeline script from SCM
    - SCM: Git, Repository URL `https://github.com/giiovi/poschtiliste.git`
    - Branch Specifier: `*/develop` or the branch to build
    - Script Path: `Jenkinsfile`
-7. Start the pipeline with "Build Now". There is no automatic trigger yet.
+   - Lightweight checkout: enabled
+   - Build retention: the `Jenkinsfile` keeps the latest 20 builds
+7. Save the job and select "Build Now". Verify that Checkout, Install, Lint,
+   Docker build, Unit tests, Integration tests and Smoke test are green and
+   that the three JUnit reports appear under "Test Result".
+
+The current repository defines one Pipeline job. It builds the selected branch
+from scratch; feature branches or pull requests can be checked by temporarily
+changing the Branch Specifier or by creating another job with the same
+`Jenkinsfile`. The pipeline itself intentionally contains no deployment stage:
+a green build proves the source, tests and production image, but does not
+replace a running environment.
+
+Automatic GitHub triggers are tracked separately in issue #44 and are not yet
+part of `develop`. Until that issue is merged and verified, "Build Now" is the
+truthful trigger for this documented configuration. This distinction prevents
+the operations guide from claiming CI evidence that the repository does not
+yet provide.
+
+After a Jenkins restart, open the job and run it again. A successful clean
+build demonstrates that the environment is reconstructible from the Git
+checkout, Node.js tool, Docker daemon and locked npm dependencies; no local
+project files or pre-created test databases are required.
 
 Run the test stages locally with:
 
