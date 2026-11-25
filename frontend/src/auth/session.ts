@@ -1,6 +1,7 @@
 import { readonly, ref } from "vue";
 
 import { fetchCurrentUser, loginUser, logoutUser } from "../api/auth";
+import { clearOfflineCache } from "../offline/offline-cache";
 import type { User } from "../types/user";
 
 type SessionState = "unknown" | "authenticated" | "unauthenticated";
@@ -25,7 +26,10 @@ export function createAuthSession(api: AuthApi = defaultApi) {
 
     initialization ??= api
       .fetchCurrentUser()
-      .then((user) => {
+      .then(async (user) => {
+        if (!user) {
+          await clearOfflineCache();
+        }
         currentUser.value = user;
         state.value = user ? "authenticated" : "unauthenticated";
       })
@@ -37,12 +41,15 @@ export function createAuthSession(api: AuthApi = defaultApi) {
   }
 
   async function login(username: string, password: string): Promise<void> {
-    currentUser.value = await api.loginUser(username, password);
+    const user = await api.loginUser(username, password);
+    await clearOfflineCache();
+    currentUser.value = user;
     state.value = "authenticated";
   }
 
   async function logout(): Promise<void> {
     await api.logoutUser();
+    await clearOfflineCache();
     clear();
   }
 

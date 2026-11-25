@@ -3,6 +3,7 @@ import { ref, watch } from "vue";
 import { RouterLink, RouterView, useRouter } from "vue-router";
 
 import { authSession } from "./auth/session";
+import OfflineBanner from "./components/OfflineBanner.vue";
 import RealtimeNotificationToast from "./components/RealtimeNotificationToast.vue";
 import { connectRealtime, disconnectRealtime } from "./realtime/socket";
 
@@ -57,6 +58,7 @@ async function logout(): Promise<void> {
         </button>
       </div>
     </header>
+    <OfflineBanner />
 
     <main class="app-main">
       <p v-if="logoutError" class="app-error" role="alert">
