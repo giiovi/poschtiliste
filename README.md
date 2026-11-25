@@ -5,14 +5,43 @@ Autor: [Alexander Schenkel](mailto:alexander.schenkel@bztf.ch), [BZT Frauenfeld]
 Diese [ ExpressJS ](https://expressjs.com)-Applikation dient als Starter-Projekt für das ICT-Modul 324, DevOps-Prozesse anwenden.
 
 Die Applikation verwendet ein ExpressJS-/TypeScript-Backend, ein Vue-Frontend
-und eine über Knex verwaltete SQLite-Datenbank. Die alte Chinook-Demo ist nicht
+und eine über Knex verwaltete Datenbank: SQLite für Entwicklung und Tests,
+PostgreSQL in der Docker-Compose-Umgebung. Die alte Chinook-Demo ist nicht
 Teil der Poschtilischte-API.
 
 ## Setup
 
-Prepare a fresh clone with a single command:
+The setup is split by role. Every role needs the prerequisites; then follow
+the section that matches your task:
+
+- [Setup for developers](#setup-for-developers): run and change the application
+- [Setup for testers](#setup-for-testers): run the tests and prepare the test
+  database
+- [Setup for the CI environment](#setup-for-the-ci-environment): run the
+  Jenkins pipeline
+
+Problems during the setup are covered in [Troubleshooting](#troubleshooting).
+
+### Prerequisites
+
+| Tool           | Version                  | Needed for                                      |
+| -------------- | ------------------------ | ----------------------------------------------- |
+| Node.js        | 24 (see `.nvmrc`)        | Backend, frontend, tests and all npm commands   |
+| npm            | 11, bundled with Node.js | Dependencies and npm commands                   |
+| Git            | any current version      | Cloning and the pre-commit hook                 |
+| Docker Desktop | with Docker Compose v2   | Optional: production image, Compose and Jenkins |
+
+With nvm, `nvm use` selects the version from `.nvmrc`. The native modules
+`sqlite3` and `bcrypt` are downloaded as prebuilt binaries for Windows, macOS
+and Linux, so no compiler is needed.
+
+### Setup for developers
+
+Clone the repository and prepare it with a single command:
 
 ```shell
+$ git clone https://github.com/giiovi/poschtiliste.git
+$ cd poschtiliste
 $ npm run setup
 ```
 
@@ -29,17 +58,95 @@ $ npm run setup
    step is skipped with a hint. Use `npm run setup -- --no-docker` to skip it on
    purpose.
 
-The script can be run again at any time. The repository has no CI environment
-such as Jenkins yet, so the setup does not start one.
-
-Stop the container with `docker compose down`. It uses port 3000, so stop it
-before starting the backend locally with `npm run dev`.
-
-The individual steps can still be run by hand, starting with:
+The script can be run again at any time. The same steps by hand:
 
 ```shell
 $ npm install
+$ cp .env.example .env
+$ npm run db:migrate
+$ npm run db:seed
 ```
+
+Start the backend and, in a second terminal, the Vue development server:
+
+```shell
+$ npm run dev
+$ npm run dev:frontend
+```
+
+Open `http://localhost:5173` and log in with a seed user, for example `alice`
+with the password `alice1234` (see
+[Development seed data](#development-seed-data)). The Compose environment from
+step 4 also uses port 3000: stop it with `docker compose down` before
+`npm run dev`.
+
+Before committing, `npm run check` and `npm test` should pass; the pre-commit
+hook runs the same checks on every commit (see
+[Pre-commit checks](#pre-commit-checks)). The
+[npm command reference](#npm-command-reference) lists all commands.
+
+### Setup for testers
+
+The tests need only the installed dependencies, no running server and no
+manually prepared database:
+
+```shell
+$ npm install
+$ npm test
+```
+
+The integration tests create their SQLite databases themselves, in memory or
+in a temporary directory, and delete them afterwards (see
+[Integration-test database](#integration-test-database)). Run the test groups
+separately with:
+
+```shell
+$ npm run test:unit
+$ npm run test:integration
+$ npm run test:authorization
+$ npm run test:backend
+$ npm run test:frontend
+```
+
+For manual tests with Knex commands there is a separate, file-based test
+database. It is configured with `TEST_DATABASE_CLIENT` and
+`TEST_DATABASE_FILENAME` in `.env` (default `backend/data/test.sqlite`) and
+never touches the development data:
+
+```shell
+$ cp .env.example .env
+$ npm run db:migrate -- --env test
+$ npm run db:seed -- --env test
+```
+
+`npm run db:rollback -- --env test` empties it again. To test the running
+application by hand, follow the [Setup for developers](#setup-for-developers)
+and log in with the seed users.
+
+### Setup for the CI environment
+
+The CI environment is a Jenkins server that runs the `Jenkinsfile`. The
+quickest way is the Jenkins service of the Compose file, which needs Docker
+Desktop:
+
+1. Set `JENKINS_ADMIN_PASSWORD` in `.env`. For the multibranch scan also set
+   `GITHUB_USERNAME` and `GITHUB_TOKEN` (personal access token with the
+   `public_repo` scope).
+2. Start Jenkins:
+
+   ```shell
+   $ docker compose up --detach --build jenkins
+   ```
+
+3. Open `http://localhost:8080` and log in with `admin` and the password from
+   `.env`. The multibranch job `poschtiliste` scans the repository every minute
+   and builds branches and pull requests.
+
+Details are in [Jenkins with Docker Compose](#jenkins-with-docker-compose). For
+an existing Jenkins server follow
+[Manual Jenkins preparation](#manual-jenkins-preparation). The pipeline stages
+are described in
+[Continuous integration (Jenkins)](#continuous-integration-jenkins).
 
 ## Environment configuration
 
@@ -75,27 +182,42 @@ No database connection parameter is hardcoded in the Knex configuration. Copy
 Run these commands from the repository root. The root scripts delegate to the
 backend and frontend packages and propagate failures to the terminal and CI.
 
-| Command                      | Purpose                                              | When to run it                                       |
-| ---------------------------- | ---------------------------------------------------- | ---------------------------------------------------- |
-| `npm install`                | Install all workspace dependencies and Git hooks     | After cloning or changing dependencies               |
-| `npm run dev`                | Start the backend with automatic restarts            | During backend development                           |
-| `npm run dev:frontend`       | Start the Vue development server                     | In a second terminal during frontend development     |
-| `npm run build`              | Compile the backend and build the frontend bundle    | Before a release or production start                 |
-| `npm start`                  | Start the compiled backend                           | After `npm run build` in a production-like setup     |
-| `npm test`                   | Run all backend and frontend tests                   | Before every pull request                            |
-| `npm run test:unit`          | Run all tests except the integration tests           | For fast feedback while developing                   |
-| `npm run test:integration`   | Run API tests against isolated real SQLite databases | After backend or persistence changes                 |
-| `npm run test:authorization` | Run authorization tests with 100% coverage gates     | After authentication or permission changes           |
-| `npm run lint`               | Check backend and frontend source with ESLint        | While developing and before committing               |
-| `npm run format`             | Format supported repository files with Prettier      | After editing or when `format:check` fails           |
-| `npm run format:check`       | Verify formatting without modifying files            | Before committing and in CI                          |
-| `npm run check`              | Run lint and the formatting check together           | Before every pull request                            |
-| `npm run db:migrate`         | Apply pending development-database migrations        | After setup and after schema changes                 |
-| `npm run db:seed`            | Load reproducible development data                   | After migrations when sample data is needed          |
-| `npm run db:rollback`        | Roll back all development-database migrations        | When resetting or validating migration reversibility |
+| Command                      | Purpose                                                | When to run it                                       |
+| ---------------------------- | ------------------------------------------------------ | ---------------------------------------------------- |
+| `npm install`                | Install all workspace dependencies and Git hooks       | After cloning or changing dependencies               |
+| `npm run setup`              | Install, create `.env`, migrate, seed, start Compose   | Once after cloning, again after a reset              |
+| `npm run dev`                | Start the backend with automatic restarts              | During backend development                           |
+| `npm run dev:backend`        | Same as `npm run dev`                                  | During backend development                           |
+| `npm run serve`              | Alias of `npm run dev`                                 | During backend development                           |
+| `npm run dev:frontend`       | Start the Vue development server                       | In a second terminal during frontend development     |
+| `npm run build`              | Compile the backend and build the frontend bundle      | Before a release or production start                 |
+| `npm run build:backend`      | Compile only the backend TypeScript to `backend/dist/` | When checking backend type errors                    |
+| `npm run build:frontend`     | Type-check and bundle only the frontend                | When checking the production bundle                  |
+| `npm start`                  | Start the compiled backend                             | After `npm run build` in a production-like setup     |
+| `npm test`                   | Run all backend and frontend tests                     | Before every pull request                            |
+| `npm run test:backend`       | Run the complete backend Jest suite                    | After backend changes                                |
+| `npm run test:frontend`      | Run the frontend Vitest suite                          | After frontend changes                               |
+| `npm run test:unit`          | Run all tests except the integration tests             | For fast feedback while developing                   |
+| `npm run test:integration`   | Run API tests against isolated real SQLite databases   | After backend or persistence changes                 |
+| `npm run test:authorization` | Run authorization tests with 100% coverage gates       | After authentication or permission changes           |
+| `npm run lint`               | Check backend and frontend source with ESLint          | While developing and before committing               |
+| `npm run lint:backend`       | Run ESLint only for the backend                        | After backend changes                                |
+| `npm run lint:frontend`      | Run ESLint only for the frontend                       | After frontend changes                               |
+| `npm run format`             | Format supported repository files with Prettier        | After editing or when `format:check` fails           |
+| `npm run format:check`       | Verify formatting without modifying files              | Before committing and in CI                          |
+| `npm run check`              | Run lint and the formatting check together             | Before every pull request                            |
+| `npm run db:migrate`         | Apply pending development-database migrations          | After setup and after schema changes                 |
+| `npm run db:seed`            | Load reproducible development data                     | After migrations when sample data is needed          |
+| `npm run db:rollback`        | Roll back all development-database migrations          | When resetting or validating migration reversibility |
 
 Append `-- --env test` to a database command to target the separate test
 database, for example `npm run db:migrate -- --env test`.
+
+`npm install` also runs the `prepare` script, which activates the Husky Git
+hooks; it is not meant to be called directly. The workspaces have their own
+scripts as well. `npm --prefix frontend run preview` serves the built frontend
+bundle locally; the other workspace scripts are the targets of the root
+commands above.
 
 ## Database migrations
 
@@ -803,6 +925,32 @@ Run the test stages locally with:
 ```shell
 $ npm run test:unit
 $ npm run test:integration
+```
+
+## Troubleshooting
+
+| Problem                                                                      | Cause                                                                     | Solution                                                                                         |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `Missing required environment variable: DATABASE_CLIENT` or `SESSION_SECRET` | `.env` is missing or incomplete                                           | `cp .env.example .env`, then compare it with `.env.example`                                      |
+| `npm install` prints `deprecated` warnings and an `npm audit` notice         | Transitive dependencies of the build and test tools                       | No action needed, the installation succeeded if it ends without `ERR!`                           |
+| `SQLITE_ERROR: no such table: users`                                         | The migrations were not applied to this database                          | `npm run db:migrate`, for the test database `npm run db:migrate -- --env test`                   |
+| Login with `alice` or `admin` fails locally                                  | The database has no seed data, for example after a rollback               | `npm run db:seed`                                                                                |
+| `EADDRINUSE: address already in use :::3000`                                 | The Compose environment or another backend already uses port 3000         | `docker compose down` or stop the other process, the Vite proxy expects the backend on port 3000 |
+| The frontend shows network errors on `http://localhost:5173`                 | The backend is not running, Vite forwards `/api` to port 3000             | Start `npm run dev` in a second terminal                                                         |
+| `npm install` fails with errors from `node-gyp`, `sqlite3` or `bcrypt`       | Wrong Node.js version, no prebuilt binary matches                         | Use Node.js 24 (`nvm use`), delete `node_modules` and run `npm install` again                    |
+| `required variable POSTGRES_PASSWORD is missing a value`                     | Docker Compose needs secrets from `.env`, also for `docker compose down`  | Create `.env` from `.env.example` and set `SESSION_SECRET` and `POSTGRES_PASSWORD`               |
+| `GLIBC_2.38' not found` from `node_sqlite3.node`                             | An image or build server with an older glibc, for example Debian bookworm | Use the Debian trixie based images from the `Dockerfile` and `jenkins/Dockerfile`                |
+| The commit is rejected by the pre-commit hook                                | ESLint error, unformatted staged file or failing test                     | `npm run format`, fix the reported error, `npm test`, then commit again                          |
+| Jenkins does not start: `JENKINS_ADMIN_PASSWORD must be set in .env`         | The administrator password is missing                                     | Set `JENKINS_ADMIN_PASSWORD` in `.env` and run `docker compose up --detach jenkins`              |
+| Jenkins: `permission denied while trying to connect to the Docker daemon`    | The `jenkins` user is not in the group of `/var/run/docker.sock`          | Set `DOCKER_GID` (Linux: `getent group docker \| cut -d: -f3`) and recreate the container        |
+| Jenkins scans slowly, log shows `Jenkins-Imposed API Limiter`                | No GitHub token, anonymous access allows 60 requests per hour             | Set `GITHUB_USERNAME` and `GITHUB_TOKEN` in `.env` and restart Jenkins                           |
+
+Reset the local development database completely with:
+
+```shell
+$ npm run db:rollback
+$ npm run db:migrate
+$ npm run db:seed
 ```
 
 ## Source structure
