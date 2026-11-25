@@ -9,6 +9,19 @@ und eine über Knex verwaltete Datenbank: SQLite für Entwicklung und Tests,
 PostgreSQL in der Docker-Compose-Umgebung. Die alte Chinook-Demo ist nicht
 Teil der Poschtilischte-API.
 
+## Architecture
+
+The Vue frontend in the browser talks to the Express backend over a REST API
+under `/api` and receives change notifications over Socket.IO. Routes pass the
+requests to services, which apply the business rules and access the database
+through Knex. Development and tests use SQLite, the Docker Compose environment
+uses PostgreSQL.
+
+[docs/architecture.md](docs/architecture.md) describes the system parts and
+their communication with diagrams, the backend and frontend structure, the
+request flow from the frontend to the database, the realtime events and the
+data model with an ER diagram.
+
 ## Setup
 
 The setup is split by role. Every role needs the prerequisites; then follow
@@ -954,6 +967,9 @@ $ npm run db:seed
 ```
 
 ## Source structure
+
+The layers of both applications are described in
+[docs/architecture.md](docs/architecture.md).
 
 The Express TypeScript application lives in `backend/`:
 
