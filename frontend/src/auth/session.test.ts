@@ -1,6 +1,7 @@
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import type { User } from "../types/user";
+import { OFFLINE_API_CACHE } from "../offline/offline-cache";
 import { createAuthSession } from "./session";
 
 const user: User = { id: 1, username: "alice", role: "user" };
@@ -46,5 +47,46 @@ describe("auth session", () => {
     expect(api.logoutUser).toHaveBeenCalledOnce();
     expect(session.state.value).toBe("unauthenticated");
     expect(session.currentUser.value).toBeNull();
+  });
+
+  describe("offline cache", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    function stubCaches() {
+      const cacheStorage = { delete: vi.fn().mockResolvedValue(true) };
+      vi.stubGlobal("caches", cacheStorage);
+      return cacheStorage;
+    }
+
+    test("is removed after login and logout", async () => {
+      const cacheStorage = stubCaches();
+      const session = createAuthSession(createApi());
+
+      await session.login("alice", "correct-password");
+      await session.logout();
+
+      expect(cacheStorage.delete).toHaveBeenCalledTimes(2);
+      expect(cacheStorage.delete).toHaveBeenCalledWith(OFFLINE_API_CACHE);
+    });
+
+    test("is removed when no session exists", async () => {
+      const cacheStorage = stubCaches();
+      const session = createAuthSession(createApi(null));
+
+      await session.initialize();
+
+      expect(cacheStorage.delete).toHaveBeenCalledWith(OFFLINE_API_CACHE);
+    });
+
+    test("is kept when an existing session is restored", async () => {
+      const cacheStorage = stubCaches();
+      const session = createAuthSession(createApi(user));
+
+      await session.initialize();
+
+      expect(cacheStorage.delete).not.toHaveBeenCalled();
+    });
   });
 });
